@@ -102,6 +102,9 @@ const obj: Config = {
   tapeMargin: 50,
   maxLineWidth: 0,
   playTimeWarning: "off",
+  pianoClef: "treble",
+  pianoDifficulty: "beginner",
+  pianoMidiDevice: "default",
 };
 
 export function getDefaultConfig(): Config {

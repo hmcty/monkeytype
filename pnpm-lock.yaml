@@ -354,6 +354,9 @@ importers:
       throttle-debounce:
         specifier: 5.0.2
         version: 5.0.2
+      vexflow:
+        specifier: 5.0.0
+        version: 5.0.0
       zod:
         specifier: 3.23.8
         version: 3.23.8
@@ -6466,6 +6469,7 @@ packages:
   keygrip@1.1.0:
     resolution: {integrity: sha512-iYSchDJ+liQ8iwbSI2QqsQOvqv58eJCEanyJPJi+Khyu8smkcKSFUCbPwzFcL7YVtZ6eONjqRX/38caJ7QjRAQ==}
     engines: {node: '>= 0.6'}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   keypress@0.2.1:
     resolution: {integrity: sha512-HjorDJFNhnM4SicvaUXac0X77NiskggxJdesG72+O5zBKpSqKFCrqmndKVqpu3pFqkla0St6uGk8Ju0sCurrmg==}
@@ -9414,6 +9418,9 @@ packages:
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
+
+  vexflow@5.0.0:
+    resolution: {integrity: sha512-rjB7TV4ygKE5Fl3W5OlG+0dHv22CFufUJdMG6oNgvcn0zp34u+sOboZsadQXnF1O3tZ3myXThaUIaLkJlpNM2Q==}
 
   vite-bundle-visualizer@1.2.1:
     resolution: {integrity: sha512-cwz/Pg6+95YbgIDp+RPwEToc4TKxfsFWSG/tsl2DSZd9YZicUag1tQXjJ5xcL7ydvEoaC2FOZeaXOU60t9BRXw==}
@@ -20183,6 +20190,8 @@ snapshots:
       spdx-expression-parse: 3.0.1
 
   vary@1.1.2: {}
+
+  vexflow@5.0.0: {}
 
   vite-bundle-visualizer@1.2.1(rollup@2.79.2):
     dependencies:

@@ -1,0 +1,186 @@
+import { midiNoteToNoteName } from "./note-utils";
+import Config from "../../config";
+import { emulateInsertText } from "../../input/handlers/insert-text";
+
+let midiAccess: MIDIAccess | null = null;
+let activeInput: MIDIInput | null = null;
+let messageHandler: ((event: MIDIMessageEvent) => void) | null = null;
+
+/**
+ * Check if Web MIDI API is supported in the current browser
+ */
+export function checkMidiSupport(): { supported: boolean; message: string } {
+  if (!navigator.requestMIDIAccess) {
+    return {
+      supported: false,
+      message:
+        "Web MIDI API not supported. Please use Chrome/Edge or enable MIDI in Firefox (dom.webaudio.midi.enabled).",
+    };
+  }
+  return { supported: true, message: "" };
+}
+
+/**
+ * Initialize Web MIDI API and request access to MIDI devices
+ * @returns Promise<boolean> - true if successful, false otherwise
+ */
+export async function initializeMidi(): Promise<boolean> {
+  const support = checkMidiSupport();
+  if (!support.supported) {
+    console.warn(support.message);
+    return false;
+  }
+
+  try {
+    midiAccess = await navigator.requestMIDIAccess();
+
+    // If a specific device was configured, try to use it
+    // const configuredDeviceId = Config.pianoMidiDevice;
+    // if (configuredDeviceId) {
+    //   const device = getMidiInputById(configuredDeviceId);
+    //   if (device) {
+    //     attachMidiListeners(device);
+    //     return true;
+    //   }
+    // }
+
+    // Otherwise, use the first available input
+    const inputs = Array.from(midiAccess.inputs.values());
+    console.log("Available MIDI inputs:", inputs);
+    if (inputs.length > 0) {
+      attachMidiListeners(inputs[1]);
+      return true;
+    } else {
+      console.warn("No MIDI input devices found");
+      return false;
+    }
+  } catch (error) {
+    console.error("Failed to initialize MIDI:", error);
+    return false;
+  }
+}
+
+/**
+ * Get a MIDI input device by its ID
+ */
+function getMidiInputById(deviceId: string): MIDIInput | null {
+  if (!midiAccess) return null;
+
+  for (const input of midiAccess.inputs.values()) {
+    if (input.id === deviceId) {
+      return input;
+    }
+  }
+  return null;
+}
+
+/**
+ * Attach MIDI message listeners to a specific input device
+ * @param input - The MIDI input device to listen to
+ */
+export function attachMidiListeners(input: MIDIInput): void {
+  // Remove previous listeners if any
+  if (activeInput && messageHandler) {
+    activeInput.removeEventListener("midimessage", messageHandler);
+  }
+
+  activeInput = input;
+  messageHandler = handleMidiMessage;
+  activeInput.addEventListener("midimessage", messageHandler);
+
+  console.log(`MIDI input attached: ${input.name}`);
+}
+
+/**
+ * Handle incoming MIDI messages
+ * @param event - The MIDI message event
+ */
+function handleMidiMessage(event: MIDIMessageEvent): void {
+  const [status, noteNumber, velocity] = event.data;
+
+  // NOTE_ON: status byte 0x90-0x9F (144-159)
+  // Channel 1-16 corresponds to 0x90-0x9F
+  const messageType = status & 0xf0; // Upper 4 bits
+  const isNoteOn = messageType === 0x90;
+
+  // Ignore NOTE_OFF (velocity 0) and non-note messages
+  if (!isNoteOn || velocity === 0) {
+    return;
+  }
+
+  // Convert MIDI note number to note name (e.g., 60 -> "C4")
+  const noteName = midiNoteToNoteName(noteNumber);
+
+  // Get current timestamp
+  const now = performance.now();
+
+  console.log(`[MIDI] Note On received: ${noteName} (MIDI ${noteNumber})`);
+
+  // Inject the note as text input
+  void emulateInsertText({
+    data: noteName,
+    timeStamp: now,
+  });
+}
+
+/**
+ * Get all available MIDI input devices
+ * @returns Array of MIDI input devices
+ */
+export function getMidiInputs(): MIDIInput[] {
+  if (!midiAccess) return [];
+  return Array.from(midiAccess.inputs.values());
+}
+
+/**
+ * Get information about available MIDI devices (for UI display)
+ */
+export function getMidiDeviceInfo(): Array<{ id: string; name: string }> {
+  const inputs = getMidiInputs();
+  return inputs.map((input) => ({
+    id: input.id,
+    name: input.name || "Unknown Device",
+  }));
+}
+
+/**
+ * Switch to a different MIDI input device
+ * @param deviceId - The ID of the device to switch to
+ * @returns true if successful, false otherwise
+ */
+export function switchMidiDevice(deviceId: string): boolean {
+  const device = getMidiInputById(deviceId);
+  if (device) {
+    attachMidiListeners(device);
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Clean up MIDI listeners and close access
+ */
+export function cleanupMidi(): void {
+  if (activeInput && messageHandler) {
+    activeInput.removeEventListener("midimessage", messageHandler);
+    activeInput = null;
+    messageHandler = null;
+  }
+
+  if (midiAccess) {
+    // Close all inputs
+    for (const input of midiAccess.inputs.values()) {
+      input.close();
+    }
+    midiAccess = null;
+  }
+
+  console.log("MIDI cleanup complete");
+}
+
+/**
+ * Check if MIDI is currently initialized and active
+ */
+export function isMidiActive(): boolean {
+  return activeInput !== null && messageHandler !== null;
+}

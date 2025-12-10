@@ -789,6 +789,27 @@ export function setCustomBackgroundFilter(
   return genericSet("customBackgroundFilter", array, nosave);
 }
 
+export function setPianoClef(
+  clef: ConfigSchemas.PianoClef,
+  nosave?: boolean,
+): boolean {
+  return genericSet("pianoClef", clef, nosave);
+}
+
+export function setPianoDifficulty(
+  difficulty: ConfigSchemas.PianoDifficulty,
+  nosave?: boolean,
+): boolean {
+  return genericSet("pianoDifficulty", difficulty, nosave);
+}
+
+export function setPianoMidiDevice(
+  deviceId: ConfigSchemas.PianoMidiDevice,
+  nosave?: boolean,
+): boolean {
+  return genericSet("pianoMidiDevice", deviceId, nosave);
+}
+
 export function setMonkeyPowerLevel(
   level: ConfigSchemas.MonkeyPowerLevel,
   nosave?: boolean,

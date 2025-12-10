@@ -23,6 +23,18 @@ import * as TestState from "../test-state";
 import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
+import { getRandomNote } from "../piano/note-generator";
+import { areNotesEquivalent } from "../piano/note-utils";
+import {
+  initializeMidi,
+  cleanupMidi,
+  isMidiActive,
+} from "../piano/midi-handler";
+import {
+  initializeKeyboardFallback,
+  cleanupKeyboardFallback,
+} from "../piano/keyboard-fallback";
+import { initializePianoUI, cleanupPianoUI } from "../piano/piano-ui";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -44,6 +56,7 @@ export type FunboxFunctions = {
   restart?: () => void;
   getWordHtml?: (char: string, letterTag?: boolean) => string;
   getWordsFrequencyMode?: () => FunboxWordsFrequency;
+  getFullWordHtml?: (word: string) => string;
 };
 
 async function readAheadHandleKeydown(event: KeyboardEvent): Promise<void> {
@@ -758,6 +771,83 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       );
 
       return new PolyglotWordset(wordsWithLanguage, languageProperties);
+    },
+  },
+  piano_sightreading: {
+    getWord(_wordset?: Wordset, _wordIndex?: number): string {
+      const difficulty = Config.pianoDifficulty || "beginner";
+      const note = getRandomNote(difficulty);
+      // console.log("[Piano] getWord() generated:", note);
+      return note;
+    },
+    getWordHtml(char: string, letterTag?: boolean): string {
+      console.log(
+        "[Piano] getWordHtml() called with char:",
+        char,
+        "letterTag:",
+        letterTag,
+      );
+
+      // Hide individual characters - we'll render the staff separately
+      // This prevents splitting "C#4" into separate letters
+      if (letterTag) {
+        // Return a hidden letter element so word structure is preserved
+        return `<letter style="display: none;">${char}</letter>`;
+      }
+
+      // This shouldn't be called without letterTag, but just in case
+      return "";
+    },
+    isCharCorrect(char: string, originalChar: string): boolean {
+      // Direct comparison
+      if (char === originalChar) return true;
+
+      // Check enharmonic equivalents (C# = Db, etc.)
+      return areNotesEquivalent(char, originalChar);
+    },
+    async start(): Promise<void> {
+      console.log("[Piano] start() called - initializing piano sightreading");
+
+      // Initialize UI rendering for musical notation
+      initializePianoUI();
+      console.log("[Piano] Piano UI initialized");
+
+      // Try to initialize MIDI
+      // const success = await initializeMidi();
+      // console.log("[Piano] MIDI initialization success:", success);
+      // if (!success) {
+      //   // // Fall back to keyboard mode
+      //   // initializeKeyboardFallback();
+      //   console.log("[Piano] Keyboard fallback mode activated");
+      //   // Notifications.add(
+      //   //   "MIDI not available. Using keyboard fallback mode. Press keys a-k for notes.",
+      //   //   0,
+      //   //   { duration: 5 },
+      //   // );
+      // }
+    },
+    clearGlobal(): void {
+      // Cleanup UI
+      cleanupPianoUI();
+
+      // Cleanup both MIDI and keyboard fallback
+      // if (isMidiActive()) {
+      //   cleanupMidi();
+      // } else {
+      //   cleanupKeyboardFallback();
+      // }
+    },
+    rememberSettings(): void {
+      save(
+        "highlightMode",
+        Config.highlightMode,
+        UpdateConfig.setHighlightMode,
+      );
+    },
+    getFullWordHtml(word: string): string {
+      // Render the musical notation for the entire word (note)
+      return word;
+      return `<div class="piano-note-notation" data-note="${word}"></div>`;
     },
   },
 };

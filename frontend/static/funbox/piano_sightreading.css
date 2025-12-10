@@ -1,0 +1,122 @@
+/* Piano Sightreading Funbox Styles */
+
+/* Hide default letter styling when in piano mode */
+#wordsWrapper.funbox-piano_sightreading #words .word letter {
+  font-size: 0;
+  line-height: 0;
+  padding: 0;
+}
+
+/* Container for musical staff */
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff {
+  display: inline-block;
+  vertical-align: middle;
+  min-width: 150px;
+  min-height: 150px;
+  margin: 0.5rem;
+}
+
+/* SVG styling - ensure it scales properly */
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Word container adjustments for musical notation */
+#wordsWrapper.funbox-piano_sightreading #words .word {
+  margin: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: none;
+}
+
+/* Active word (currently being played) */
+#wordsWrapper.funbox-piano_sightreading #words .word.active .noteStaff {
+  filter: brightness(1.3);
+  transform: scale(1.05);
+  transition: transform 0.15s ease-out;
+}
+
+/* Correct note - use theme color */
+#wordsWrapper.funbox-piano_sightreading #words .word letter.correct + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-correct {
+  opacity: 1;
+}
+
+#wordsWrapper.funbox-piano_sightreading #words .word letter.correct + .noteStaff svg,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-correct svg {
+  filter: hue-rotate(90deg) saturate(1.5);
+}
+
+/* Incorrect note - use error color */
+#wordsWrapper.funbox-piano_sightreading #words .word letter.incorrect + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-incorrect {
+  opacity: 1;
+}
+
+#wordsWrapper.funbox-piano_sightreading #words .word letter.incorrect + .noteStaff svg,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-incorrect svg {
+  filter: hue-rotate(0deg) saturate(2);
+}
+
+/* Untyped note - subdued */
+#wordsWrapper.funbox-piano_sightreading #words .word letter:not(.correct):not(.incorrect) + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-untyped {
+  opacity: 0.6;
+}
+
+/* Typed words fade out slightly */
+#wordsWrapper.funbox-piano_sightreading #words .word.typed {
+  opacity: 0.4;
+}
+
+/* Ensure staff lines are visible */
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg path,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg line {
+  stroke: var(--text-color);
+  stroke-width: 1;
+}
+
+/* Note heads */
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg ellipse,
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg path.vf-notehead {
+  fill: var(--text-color);
+  stroke: var(--text-color);
+}
+
+/* Clef symbols */
+#wordsWrapper.funbox-piano_sightreading #words .noteStaff svg path.vf-clef {
+  fill: var(--text-color);
+  stroke: var(--text-color);
+}
+
+/* Adjust spacing for better readability */
+#wordsWrapper.funbox-piano_sightreading #words {
+  line-height: 180px;
+  padding: 2rem 1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  #wordsWrapper.funbox-piano_sightreading #words .noteStaff {
+    min-width: 120px;
+    min-height: 120px;
+  }
+
+  #wordsWrapper.funbox-piano_sightreading #words {
+    line-height: 150px;
+  }
+}
+
+/* Theme compatibility - ensure good contrast */
+#wordsWrapper.funbox-piano_sightreading.flipped #words .noteStaff svg path,
+#wordsWrapper.funbox-piano_sightreading.flipped #words .noteStaff svg line,
+#wordsWrapper.funbox-piano_sightreading.flipped #words .noteStaff svg ellipse {
+  stroke: var(--sub-color);
+  fill: var(--sub-color);
+}
+
+/* Colorful mode support */
+#wordsWrapper.funbox-piano_sightreading.colorfulMode #words .word letter.correct + .noteStaff svg {
+  filter: hue-rotate(120deg) saturate(2) brightness(1.1);
+}

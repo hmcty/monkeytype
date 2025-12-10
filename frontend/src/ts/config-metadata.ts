@@ -798,4 +798,21 @@ export const configMetadata: ConfigMetadataObject = {
       }
     },
   },
+
+  // piano
+  pianoClef: {
+    icon: "fa-music",
+    displayString: "piano clef",
+    changeRequiresRestart: true,
+  },
+  pianoDifficulty: {
+    icon: "fa-star",
+    displayString: "piano difficulty",
+    changeRequiresRestart: true,
+  },
+  pianoMidiDevice: {
+    icon: "fa-plug",
+    displayString: "MIDI device",
+    changeRequiresRestart: false,
+  },
 };

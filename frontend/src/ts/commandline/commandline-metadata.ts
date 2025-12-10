@@ -740,4 +740,35 @@ export const commandlineConfigMetadata: CommandlineConfigMetadataObject = {
       options: "fromSchema",
     },
   },
+
+  //piano
+  pianoClef: {
+    subgroup: {
+      options: "fromSchema",
+      isVisible: (value) => !["piano"].includes(value),
+      afterExec: () => {
+        TestLogic.restart();
+      },
+    },
+  },
+  pianoDifficulty: {
+    subgroup: {
+      options: "fromSchema",
+      isVisible: (value) => !["piano"].includes(value),
+      afterExec: () => {
+        TestLogic.restart();
+      },
+    },
+  },
+  pianoMidiDevice: {
+    subgroup: {
+      options: "fromSchema",
+      isVisible: (value) => !["piano"].includes(value),
+      display: (layout) =>
+        layout === "default" ? "off" : layout.replace(/_/g, " "),
+    },
+    // input: {
+    //   inputValueConvert: (val: string) => val,
+    // },
+  },
 };

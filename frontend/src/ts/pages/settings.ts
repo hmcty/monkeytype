@@ -476,6 +476,11 @@ async function initGroups(): Promise<void> {
     UpdateConfig.setCustomBackgroundSize,
     "button",
   );
+  groups["pianoMidiDevice"] = new SettingsGroup(
+    "pianoMidiDevice",
+    UpdateConfig.setPianoMidiDevice,
+    "select",
+  );
 }
 
 async function fillSettingsPage(): Promise<void> {
@@ -801,7 +806,7 @@ function refreshPresetsSettingsSection(): void {
           <i class="fas fa-trash fa-fw"></i>
         </button>
       </div>
-      
+
       `);
     });
     $(".pageSettings .section.presets").removeClass("hidden");

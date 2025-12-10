@@ -474,6 +474,34 @@ const list: Record<FunboxName, FunboxMetadata> = {
     difficultyLevel: 0,
     name: "no_quit",
   },
+  piano_sightreading: {
+    name: "piano_sightreading",
+    description: "Practice piano sightreading with MIDI keyboard input.",
+    canGetPb: false,
+    difficultyLevel: 2,
+    properties: [
+      "ignoresLanguage",
+      "ignoresLayout",
+      "nospace",
+      "noLetters",
+      "hasCssFile",
+      "unspeakable",
+    ],
+    frontendForcedConfig: {
+      punctuation: [false],
+      numbers: [false],
+      highlightMode: ["letter", "off"],
+    },
+    frontendFunctions: [
+      "getWord",
+      "getWordHtml",
+      "isCharCorrect",
+      "rememberSettings",
+      "start",
+      "clearGlobal",
+    ],
+    cssModifications: ["words"],
+  },
 };
 
 export function getFunbox(name: FunboxName): FunboxMetadata;

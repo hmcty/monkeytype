@@ -25,6 +25,7 @@ import * as LiveSpeed from "./live-speed";
 import * as LiveAcc from "./live-acc";
 import * as LiveBurst from "./live-burst";
 import * as TimerProgress from "./timer-progress";
+import * as MidiHandler from "./piano/midi-handler";
 
 import * as TestTimer from "./test-timer";
 import * as OutOfFocus from "./out-of-focus";
@@ -468,6 +469,12 @@ async function init(): Promise<boolean> {
   }
 
   const allowLazyMode = !language.noLazyMode || Config.mode === "custom";
+
+  if (getActiveFunboxNames().includes("piano_sightreading")) {
+    if (!MidiHandler.isMidiActive()) {
+      MidiHandler.initializeMidi();
+    }
+  }
 
   // polyglot mode, check to enable lazy mode if any support it
   if (getActiveFunboxNames().includes("polyglot")) {
