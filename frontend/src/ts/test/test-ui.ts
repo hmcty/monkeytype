@@ -452,13 +452,6 @@ function buildWordHTML(word: string, wordIndex: number): string {
   let newlineafter = false;
   let retval = `<div class='word' data-wordindex='${wordIndex}'>`;
 
-  const fullfunbox = findSingleActiveFunboxWithFunction("getFullWordHtml");
-  if (fullfunbox) {
-    retval += fullfunbox.functions.getFullWordHtml(word, true);
-    retval += "</div>";
-    return retval;
-  }
-
   const funbox = findSingleActiveFunboxWithFunction("getWordHtml");
   const chars = Strings.splitIntoCharacters(word);
   for (const char of chars) {
@@ -534,6 +527,8 @@ function updateWordWrapperClasses(): void {
 
 export function showWords(): void {
   wordsEl.innerHTML = "";
+
+  let funbox = findSingleActiveFunboxWithFunction("buildWordHtml");
 
   if (Config.mode === "zen") {
     appendEmptyWordElement();

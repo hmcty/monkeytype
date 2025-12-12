@@ -502,7 +502,7 @@ export function resetKeypressTimings(): void {
 
   console.debug("Keypress timings reset");
 }
-
+//
 export function pushMissedWord(word: string): void {
   if (!Object.keys(missedWords).includes(word)) {
     missedWords[word] = 1;

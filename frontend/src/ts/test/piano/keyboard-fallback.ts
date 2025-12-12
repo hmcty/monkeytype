@@ -4,6 +4,7 @@
  */
 
 import { emulateInsertText } from "../../input/handlers/insert-text";
+import { encodeNote } from "./note-utils";
 
 /**
  * Keyboard to note mapping
@@ -59,8 +60,8 @@ export function initializeKeyboardFallback(): void {
   document.addEventListener("keydown", keydownHandler, true);
   isActive = true;
 
-  console.log("[KeyboardFallback] Keyboard fallback mode activated");
-  console.log("[KeyboardFallback] Press a-k for notes C4-C5, w/e/t/y/u for sharps");
+  console.log("[Piano] Keyboard fallback mode activated");
+  console.log("[Piano] Press a-k for notes C4-C5, w/e/t/y/u for sharps");
 }
 
 /**
@@ -68,16 +69,19 @@ export function initializeKeyboardFallback(): void {
  */
 function handleKeydown(event: KeyboardEvent): void {
   const key = event.key.toLowerCase();
-  console.log("[KeyboardFallback] Key pressed:", key);
+  console.log("[Piano] Key pressed:", key);
 
   const noteName = KEYBOARD_TO_NOTE_MAP[key];
   if (noteName === undefined) {
     // Key not mapped to a note
-    console.log("[KeyboardFallback] Key not mapped, ignoring");
+    console.log("[Piano] Key not mapped, ignoring");
     return;
   }
 
-  console.log("[KeyboardFallback] Mapped to note:", noteName);
+  console.log("[Piano] Mapped to note:", noteName);
+
+  // Encode the note as a single character
+  const encodedNote = encodeNote(noteName);
 
   // Prevent default keyboard behavior
   event.preventDefault();
@@ -85,10 +89,10 @@ function handleKeydown(event: KeyboardEvent): void {
 
   const now = performance.now();
 
-  console.log("[KeyboardFallback] Emulating insert of:", noteName);
-  // Inject the note as text input
+  console.log("[Piano] Emulating insert of:", noteName, "-> encoded:", encodedNote.charCodeAt(0).toString(16));
+  // Inject the encoded note as text input
   void emulateInsertText({
-    data: noteName,
+    data: encodedNote,
     timeStamp: now,
   });
 }
@@ -106,7 +110,7 @@ export function cleanupKeyboardFallback(): void {
   }
 
   isActive = false;
-  console.log("[KeyboardFallback] Keyboard fallback mode deactivated");
+  console.log("[Piano] Keyboard fallback mode deactivated");
 }
 
 /**

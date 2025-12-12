@@ -24,7 +24,12 @@ import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { getRandomNote } from "../piano/note-generator";
-import { areNotesEquivalent } from "../piano/note-utils";
+import {
+  areNotesEquivalent,
+  encodeNote,
+  decodeNote,
+  isEncodedNote,
+} from "../piano/note-utils";
 import {
   initializeMidi,
   cleanupMidi,
@@ -34,7 +39,12 @@ import {
   initializeKeyboardFallback,
   cleanupKeyboardFallback,
 } from "../piano/keyboard-fallback";
-import { initializePianoUI, cleanupPianoUI } from "../piano/piano-ui";
+import {
+  initializePianoUI,
+  cleanupPianoUI,
+  registerNote,
+  advanceNote,
+} from "../piano/piano-ui";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -56,7 +66,6 @@ export type FunboxFunctions = {
   restart?: () => void;
   getWordHtml?: (char: string, letterTag?: boolean) => string;
   getWordsFrequencyMode?: () => FunboxWordsFrequency;
-  getFullWordHtml?: (word: string) => string;
 };
 
 async function readAheadHandleKeydown(event: KeyboardEvent): Promise<void> {
@@ -777,33 +786,78 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     getWord(_wordset?: Wordset, _wordIndex?: number): string {
       const difficulty = Config.pianoDifficulty || "beginner";
       const note = getRandomNote(difficulty);
-      // console.log("[Piano] getWord() generated:", note);
-      return note;
-    },
-    getWordHtml(char: string, letterTag?: boolean): string {
+      console.log("[Piano] getWord() generated:", note);
+
+      // Register this note with the piano UI for rendering
+      registerNote(note);
+
+      // Encode the note as a single character for Monkeytype's character-by-character processing
+      const encodedNote = encodeNote(note);
       console.log(
-        "[Piano] getWordHtml() called with char:",
-        char,
-        "letterTag:",
-        letterTag,
+        "[Piano] Encoded as:",
+        encodedNote,
+        "charCode:",
+        encodedNote.charCodeAt(0).toString(16),
       );
 
-      // Hide individual characters - we'll render the staff separately
-      // This prevents splitting "C#4" into separate letters
-      if (letterTag) {
-        // Return a hidden letter element so word structure is preserved
-        return `<letter style="display: none;">${char}</letter>`;
-      }
+      return encodedNote;
+    },
+    getWordHtml(char: string, letterTag?: boolean): string {
+      // char is now an encoded note (single character)
+      // Return invisible marker - the VexFlow staff shows the actual note
+      console.log(
+        "[Piano] getWordHtml() called for encoded char:",
+        char,
+        "charCode:",
+        char.charCodeAt(0).toString(16),
+      );
 
-      // This shouldn't be called without letterTag, but just in case
-      return "";
+      // Decode the note for display (though it will be invisible)
+      const decodedNote = decodeNote(char);
+
+      if (letterTag) {
+        // Return a proper letter element with the decoded note
+        // Keep it visible but transparent so Monkeytype's DOM navigation works
+        return `<letter>${decodedNote}</letter>`;
+      }
+      return decodedNote;
     },
     isCharCorrect(char: string, originalChar: string): boolean {
-      // Direct comparison
-      if (char === originalChar) return true;
+      // Both char and originalChar are encoded notes
+      console.log(
+        "[Piano] isCharCorrect() - char:",
+        char,
+        "original:",
+        originalChar,
+      );
 
-      // Check enharmonic equivalents (C# = Db, etc.)
-      return areNotesEquivalent(char, originalChar);
+      advanceNote();
+
+      // Direct comparison (same encoding)
+      if (char === originalChar) {
+        return true;
+      }
+
+      // Decode and check enharmonic equivalents (C# = Db, etc.)
+      try {
+        const decodedChar = decodeNote(char);
+        const decodedOriginal = decodeNote(originalChar);
+        console.log(
+          "[Piano] Decoded - char:",
+          decodedChar,
+          "original:",
+          decodedOriginal,
+        );
+
+        const isEquivalent = areNotesEquivalent(decodedChar, decodedOriginal);
+        if (isEquivalent) {
+          advanceNote();
+        }
+        return isEquivalent;
+      } catch (error) {
+        console.error("[Piano] Failed to decode notes:", error);
+        return false;
+      }
     },
     async start(): Promise<void> {
       console.log("[Piano] start() called - initializing piano sightreading");
@@ -843,11 +897,6 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
         Config.highlightMode,
         UpdateConfig.setHighlightMode,
       );
-    },
-    getFullWordHtml(word: string): string {
-      // Render the musical notation for the entire word (note)
-      return word;
-      return `<div class="piano-note-notation" data-note="${word}"></div>`;
     },
   },
 };

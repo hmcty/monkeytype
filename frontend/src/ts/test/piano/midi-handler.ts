@@ -1,4 +1,4 @@
-import { midiNoteToNoteName } from "./note-utils";
+import { midiNoteToNoteName, encodeNote } from "./note-utils";
 import Config from "../../config";
 import { emulateInsertText } from "../../input/handlers/insert-text";
 
@@ -27,7 +27,7 @@ export function checkMidiSupport(): { supported: boolean; message: string } {
 export async function initializeMidi(): Promise<boolean> {
   const support = checkMidiSupport();
   if (!support.supported) {
-    console.warn(support.message);
+    console.warn("[Piano]", support.message);
     return false;
   }
 
@@ -46,16 +46,16 @@ export async function initializeMidi(): Promise<boolean> {
 
     // Otherwise, use the first available input
     const inputs = Array.from(midiAccess.inputs.values());
-    console.log("Available MIDI inputs:", inputs);
+    console.log("[Piano] Available MIDI inputs:", inputs);
     if (inputs.length > 0) {
       attachMidiListeners(inputs[1]);
       return true;
     } else {
-      console.warn("No MIDI input devices found");
+      console.warn("[Piano] No MIDI input devices found");
       return false;
     }
   } catch (error) {
-    console.error("Failed to initialize MIDI:", error);
+    console.error("[Piano] Failed to initialize MIDI:", error);
     return false;
   }
 }
@@ -88,7 +88,7 @@ export function attachMidiListeners(input: MIDIInput): void {
   messageHandler = handleMidiMessage;
   activeInput.addEventListener("midimessage", messageHandler);
 
-  console.log(`MIDI input attached: ${input.name}`);
+  console.log(`[Piano] MIDI input attached: ${input.name}`);
 }
 
 /**
@@ -111,14 +111,17 @@ function handleMidiMessage(event: MIDIMessageEvent): void {
   // Convert MIDI note number to note name (e.g., 60 -> "C4")
   const noteName = midiNoteToNoteName(noteNumber);
 
+  // Encode the note as a single character
+  const encodedNote = encodeNote(noteName);
+
   // Get current timestamp
   const now = performance.now();
 
-  console.log(`[MIDI] Note On received: ${noteName} (MIDI ${noteNumber})`);
+  console.log(`[Piano] Note On received: ${noteName} (MIDI ${noteNumber}) -> encoded: ${encodedNote.charCodeAt(0).toString(16)}`);
 
-  // Inject the note as text input
+  // Inject the encoded note as text input
   void emulateInsertText({
-    data: noteName,
+    data: encodedNote,
     timeStamp: now,
   });
 }
@@ -175,7 +178,7 @@ export function cleanupMidi(): void {
     midiAccess = null;
   }
 
-  console.log("MIDI cleanup complete");
+  console.log("[Piano] MIDI cleanup complete");
 }
 
 /**

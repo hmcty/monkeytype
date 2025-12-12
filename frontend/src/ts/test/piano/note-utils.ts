@@ -51,6 +51,109 @@ const NOTE_RANGES: Record<string, NoteRange> = {
 };
 
 /**
+ * Unicode Private Use Area base for encoding notes
+ * We use U+E000 as the base (start of Private Use Area)
+ */
+const NOTE_ENCODING_BASE = 0xe000;
+
+/**
+ * Note name to index mapping
+ */
+const NOTE_TO_INDEX: Record<string, number> = {
+  C: 0,
+  D: 1,
+  E: 2,
+  F: 3,
+  G: 4,
+  A: 5,
+  B: 6,
+};
+
+const INDEX_TO_NOTE: string[] = ["C", "D", "E", "F", "G", "A", "B"];
+
+/**
+ * Accidental to index mapping
+ */
+const ACCIDENTAL_TO_INDEX: Record<string, number> = {
+  "": 0, // Natural
+  "#": 1, // Sharp
+  b: 2, // Flat
+};
+
+const INDEX_TO_ACCIDENTAL: string[] = ["", "#", "b"];
+
+/**
+ * Encode a note (e.g., "C#4") as a single Unicode character
+ * Format: base + (noteIndex << 6) + (accidentalIndex << 4) + octave
+ * @param noteName - Note name with octave (e.g., "C4", "F#5", "Db3")
+ * @returns Single character encoding the note
+ */
+export function encodeNote(noteName: string): string {
+  // Parse note name (e.g., "C#4" -> "C", "#", "4")
+  const match = noteName.match(/^([A-G])([#b]?)(\d)$/);
+  if (!match) {
+    throw new Error(`Invalid note format: ${noteName}`);
+  }
+
+  const [, note, accidental, octaveStr] = match;
+  const noteIndex = NOTE_TO_INDEX[note];
+  const accidentalIndex = ACCIDENTAL_TO_INDEX[accidental || ""];
+  const octave = parseInt(octaveStr, 10);
+
+  if (noteIndex === undefined || accidentalIndex === undefined) {
+    throw new Error(`Invalid note components: ${noteName}`);
+  }
+
+  if (octave < 0 || octave > 9) {
+    throw new Error(`Octave out of range (0-9): ${octave}`);
+  }
+
+  // Encode: (noteIndex << 6) + (accidentalIndex << 4) + octave
+  const encoded = NOTE_ENCODING_BASE + (noteIndex << 6) + (accidentalIndex << 4) + octave;
+
+  return String.fromCharCode(encoded);
+}
+
+/**
+ * Decode a single character back to a note name
+ * @param char - Single character encoding a note
+ * @returns Note name with octave (e.g., "C4", "F#5", "Db3")
+ */
+export function decodeNote(char: string): string {
+  const charCode = char.charCodeAt(0);
+  const value = charCode - NOTE_ENCODING_BASE;
+
+  if (value < 0 || charCode < NOTE_ENCODING_BASE) {
+    throw new Error(`Invalid encoded note character: ${char} (code: ${charCode})`);
+  }
+
+  // Decode: extract bits
+  const octave = value & 0x0f; // Last 4 bits
+  const accidentalIndex = (value >> 4) & 0x03; // Next 2 bits
+  const noteIndex = (value >> 6) & 0x07; // Next 3 bits
+
+  const note = INDEX_TO_NOTE[noteIndex];
+  const accidental = INDEX_TO_ACCIDENTAL[accidentalIndex];
+
+  if (!note || accidental === undefined) {
+    throw new Error(`Failed to decode note: ${char} (value: ${value})`);
+  }
+
+  return `${note}${accidental}${octave}`;
+}
+
+/**
+ * Check if a character is an encoded note
+ * @param char - Character to check
+ * @returns true if the character is an encoded note
+ */
+export function isEncodedNote(char: string): boolean {
+  if (char.length !== 1) return false;
+  const charCode = char.charCodeAt(0);
+  return charCode >= NOTE_ENCODING_BASE && charCode < NOTE_ENCODING_BASE + 0x400; // Max encoding space
+}
+
+/**
  * Convert MIDI note number to note name with octave
  * @param midiNumber - MIDI note number (0-127)
  * @returns Note name with octave (e.g., "C4", "F#5")
@@ -168,13 +271,12 @@ export type ParsedNote = {
 export function parseNote(note: string): ParsedNote | null {
   const match = note.match(/^([A-G])([#b]?)(\d+)$/);
   if (!match) {
-    console.log("FAILED TO PARSE NOTE:", note);
+    console.log("[Piano] Failed to parse note:", note);
     return null;
   }
 
   const [fullName, noteName, accidental, octaveStr] = match;
-  console.log("HERE PARSE NOTE");
-  console.log({ fullName, noteName, accidental, octaveStr });
+  console.log("[Piano] Parsing note:", { fullName, noteName, accidental, octaveStr });
   if (
     fullName == undefined ||
     noteName == undefined ||

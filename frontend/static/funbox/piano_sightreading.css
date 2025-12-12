@@ -5,6 +5,12 @@
   font-size: 0;
   line-height: 0;
   padding: 0;
+  margin: 0;
+  opacity: 0;
+  position: absolute;
+  pointer-events: none;
+  width: 0;
+  height: 0;
 }
 
 /* Container for musical staff */
@@ -38,29 +44,51 @@
 }
 
 /* Correct note - use theme color */
-#wordsWrapper.funbox-piano_sightreading #words .word letter.correct + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading
+  #words
+  .word
+  letter.correct
+  + .noteStaff,
 #wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-correct {
   opacity: 1;
 }
 
-#wordsWrapper.funbox-piano_sightreading #words .word letter.correct + .noteStaff svg,
+#wordsWrapper.funbox-piano_sightreading
+  #words
+  .word
+  letter.correct
+  + .noteStaff
+  svg,
 #wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-correct svg {
   filter: hue-rotate(90deg) saturate(1.5);
 }
 
 /* Incorrect note - use error color */
-#wordsWrapper.funbox-piano_sightreading #words .word letter.incorrect + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading
+  #words
+  .word
+  letter.incorrect
+  + .noteStaff,
 #wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-incorrect {
   opacity: 1;
 }
 
-#wordsWrapper.funbox-piano_sightreading #words .word letter.incorrect + .noteStaff svg,
+#wordsWrapper.funbox-piano_sightreading
+  #words
+  .word
+  letter.incorrect
+  + .noteStaff
+  svg,
 #wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-incorrect svg {
   filter: hue-rotate(0deg) saturate(2);
 }
 
 /* Untyped note - subdued */
-#wordsWrapper.funbox-piano_sightreading #words .word letter:not(.correct):not(.incorrect) + .noteStaff,
+#wordsWrapper.funbox-piano_sightreading
+  #words
+  .word
+  letter:not(.correct):not(.incorrect)
+  + .noteStaff,
 #wordsWrapper.funbox-piano_sightreading #words .noteStaff.note-untyped {
   opacity: 0.6;
 }
@@ -97,7 +125,7 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 900px) {
+@media (max-width: 1500px) {
   #wordsWrapper.funbox-piano_sightreading #words .noteStaff {
     min-width: 120px;
     min-height: 120px;
@@ -117,6 +145,11 @@
 }
 
 /* Colorful mode support */
-#wordsWrapper.funbox-piano_sightreading.colorfulMode #words .word letter.correct + .noteStaff svg {
+#wordsWrapper.funbox-piano_sightreading.colorfulMode
+  #words
+  .word
+  letter.correct
+  + .noteStaff
+  svg {
   filter: hue-rotate(120deg) saturate(2) brightness(1.1);
 }
