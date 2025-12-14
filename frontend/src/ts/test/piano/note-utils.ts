@@ -109,7 +109,8 @@ export function encodeNote(noteName: string): string {
   }
 
   // Encode: (noteIndex << 6) + (accidentalIndex << 4) + octave
-  const encoded = NOTE_ENCODING_BASE + (noteIndex << 6) + (accidentalIndex << 4) + octave;
+  const encoded =
+    NOTE_ENCODING_BASE + (noteIndex << 6) + (accidentalIndex << 4) + octave;
 
   return String.fromCharCode(encoded);
 }
@@ -124,7 +125,9 @@ export function decodeNote(char: string): string {
   const value = charCode - NOTE_ENCODING_BASE;
 
   if (value < 0 || charCode < NOTE_ENCODING_BASE) {
-    throw new Error(`Invalid encoded note character: ${char} (code: ${charCode})`);
+    throw new Error(
+      `Invalid encoded note character: ${char} (code: ${charCode})`,
+    );
   }
 
   // Decode: extract bits
@@ -150,7 +153,9 @@ export function decodeNote(char: string): string {
 export function isEncodedNote(char: string): boolean {
   if (char.length !== 1) return false;
   const charCode = char.charCodeAt(0);
-  return charCode >= NOTE_ENCODING_BASE && charCode < NOTE_ENCODING_BASE + 0x400; // Max encoding space
+  return (
+    charCode >= NOTE_ENCODING_BASE && charCode < NOTE_ENCODING_BASE + 0x400
+  ); // Max encoding space
 }
 
 /**
@@ -276,7 +281,12 @@ export function parseNote(note: string): ParsedNote | null {
   }
 
   const [fullName, noteName, accidental, octaveStr] = match;
-  console.log("[Piano] Parsing note:", { fullName, noteName, accidental, octaveStr });
+  console.log("[Piano] Parsing note:", {
+    fullName,
+    noteName,
+    accidental,
+    octaveStr,
+  });
   if (
     fullName == undefined ||
     noteName == undefined ||

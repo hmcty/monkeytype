@@ -785,7 +785,7 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
   piano_sightreading: {
     getWord(_wordset?: Wordset, _wordIndex?: number): string {
       const difficulty = Config.pianoDifficulty || "beginner";
-      const note = getRandomNote(difficulty);
+      const note = getRandomNote();
       console.log("[Piano] getWord() generated:", note);
 
       // Register this note with the piano UI for rendering
@@ -818,7 +818,9 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       if (letterTag) {
         // Return a proper letter element with the decoded note
         // Keep it visible but transparent so Monkeytype's DOM navigation works
-        return `<letter>${decodedNote}</letter>`;
+        return `<letter class='invisible'>${decodedNote}</letter>`;
+      } else {
+        // return "";
       }
       return decodedNote;
     },
@@ -836,6 +838,7 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       // Direct comparison (same encoding)
       if (char === originalChar) {
         return true;
+        advanceNote();
       }
 
       // Decode and check enharmonic equivalents (C# = Db, etc.)

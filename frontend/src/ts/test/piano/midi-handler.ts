@@ -115,14 +115,15 @@ function handleMidiMessage(event: MIDIMessageEvent): void {
   const encodedNote = encodeNote(noteName);
 
   // Get current timestamp
-  const now = performance.now();
-
-  console.log(`[Piano] Note On received: ${noteName} (MIDI ${noteNumber}) -> encoded: ${encodedNote.charCodeAt(0).toString(16)}`);
+  console.log(
+    `[Piano] Note On received: ${noteName} (MIDI ${noteNumber}) -> encoded: ${encodedNote.charCodeAt(0).toString(16)}`,
+  );
 
   // Inject the encoded note as text input
-  void emulateInsertText({
+  const now = performance.now();
+  emulateInsertText({
     data: encodedNote,
-    timeStamp: now,
+    now,
   });
 }
 

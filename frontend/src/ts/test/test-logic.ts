@@ -137,6 +137,7 @@ export function startTest(now: number): boolean {
     }
   } catch (e) {}
   //use a recursive self-adjusting timer to avoid time drift
+  console.debug("Starting test at", now);
   TestStats.setStart(now);
   void TestTimer.start();
   TestUI.afterTestStart();

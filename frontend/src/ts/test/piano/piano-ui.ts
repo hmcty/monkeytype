@@ -3,16 +3,19 @@
  * Manages VexFlow rendering and note tracking for piano sightreading
  */
 
-import { Factory } from "vexflow";
+import { Factory, StemmableNote } from "vexflow";
 import * as ActivePage from "../../states/active-page";
 import * as Config from "../../config";
+import * as TestUi from "../test-ui";
 
 // VexFlow factory instance
 let vf: Factory | null = null;
 
 // Note tracking
 let allNotes: string[] = [];
+let renderedNotes: StemmableNote[] = [];
 let currentNoteIndex = 0;
+let allNotesObservers: MutationObserver[] = [];
 // const VISIBLE_NOTE_COUNT = 12; // Number of notes visible at once
 
 const BEATS_PER_MEASURE = 4;
@@ -46,104 +49,8 @@ function getStaffDimensions(): { width: number; height: number } {
 export function initializePianoUI(): void {
   console.log("[Piano] Initializing piano UI...");
 
-  // Reset state
-  // allNotes = [];
   currentNoteIndex = 0;
 
-  // Get the words container
-  const wordsElement = document.getElementById("words");
-  if (!wordsElement) {
-    console.error("[Piano] #words element not found");
-    return;
-  }
-
-  // Create a separate container for VexFlow that overlays the words
-  // This allows Monkeytype's word/letter elements to remain in the DOM
-  let pianoStaffContainer = document.getElementById("pianoStaffContainer");
-  if (!pianoStaffContainer) {
-    pianoStaffContainer = document.createElement("div");
-    pianoStaffContainer.id = "pianoStaffContainer";
-    pianoStaffContainer.style.position = "relative";
-    // pianoStaffContainer.style.width = "100%";
-    // pianoStaffContainer.style.minHeight = "800px";
-    pianoStaffContainer.style.pointerEvents = "none";
-    pianoStaffContainer.style.zIndex = "10";
-    pianoStaffContainer.style.display = "flex";
-    pianoStaffContainer.style.flexDirection = "row";
-    pianoStaffContainer.style.alignItems = "center";
-    pianoStaffContainer.style.justifyContent = "center";
-    // pianoStaffContainer.style.marginTop = "2rem";
-    pianoStaffContainer.style.backgroundColor = "rgba(255, 0, 0, 0.1)"; // Debug: red tint
-    pianoStaffContainer.style.border = "2px solid red"; // Debug: red border
-    wordsElement.parentElement?.insertBefore(pianoStaffContainer, wordsElement);
-    console.log("[Piano] Created pianoStaffContainer:", pianoStaffContainer);
-  }
-
-  // // Clear the piano staff container (not the words element!)
-  // pianoStaffContainer.innerHTML = "";
-
-  // // Get responsive dimensions
-  // const { width, height } = getStaffDimensions();
-  // console.log("[Piano] Staff dimensions:", width, "x", height);
-
-  // // Create VexFlow factory pointing to our overlay container
-  // try {
-  //   vf = new Factory({
-  //     renderer: {
-  //       elementId: "pianoStaffContainer",
-  //       width,
-  //       height,
-  //     },
-  //   });
-
-  //   console.log("[Piano] VexFlow Factory initialized, vf:", vf);
-  //   console.log("[Piano] About to test render...");
-
-  //   // Test render to verify VexFlow is working
-  //   const score = vf.EasyScore();
-  //   const system = vf.System();
-
-  //   const notes = score.notes("C4/q, D4/q, E4/q, F4/q", { stem: "up" });
-  //   console.log("[Piano] Created notes:", notes);
-
-  //   const voice = score.voice(notes);
-  //   console.log("[Piano] Created voice:", voice);
-
-  //   console.log("[Piano] About to add stave...");
-  //   const stave = system.addStave({ voices: [voice] });
-  //   console.log("[Piano] Added stave:", stave);
-
-  //   console.log("[Piano] About to add clef...");
-  //   stave.addClef("treble");
-  //   console.log("[Piano] Added clef to stave");
-
-  //   console.log("[Piano] About to draw...");
-  //   vf.draw();
-  //   console.log("[Piano] Called vf.draw() - Test render complete!");
-
-  //   // Check if SVG was created
-  //   const svg = pianoStaffContainer.querySelector("svg");
-  //   console.log("[Piano] SVG element found:", svg);
-  //   if (svg) {
-  //     console.log(
-  //       "[Piano] SVG dimensions:",
-  //       svg.getAttribute("width"),
-  //       "x",
-  //       svg.getAttribute("height"),
-  //     );
-  //     console.log("[Piano] SVG viewBox:", svg.getAttribute("viewBox"));
-  //     console.log("[Piano] SVG has children:", svg.children.length);
-
-  //     // Make sure SVG is visible
-  //     svg.style.display = "block";
-  //     svg.style.backgroundColor = "white";
-  //     svg.style.border = "2px solid blue";
-  //     console.log("[Piano] Applied visibility styles to SVG");
-  //   }
-  // } catch (error) {
-  //   console.error("[Piano] Failed to initialize/render VexFlow:", error);
-  //   console.error("[Piano] Error stack:", error.stack);
-  // }
   renderNoteWindow();
 }
 
@@ -175,6 +82,8 @@ function noteToVexFlowNotation(note: string): string {
   return `${noteName}${octave}`;
 }
 
+export function markNoteAsPlayed(index: number, correct: boolean): void {}
+
 /**
  * Render the current window of visible notes
  */
@@ -190,7 +99,7 @@ function renderNoteWindow(): void {
     const endIndex = Math.min(startIndex + VISIBLE_NOTE_COUNT, allNotes.length);
     const visibleNotes = allNotes.slice(startIndex, endIndex);
 
-    if (visibleNotes.length === 0) {
+    if (visibleNotes.length < 0) {
       console.log("[Piano] No notes to render");
       return;
     }
@@ -204,14 +113,43 @@ function renderNoteWindow(): void {
       endIndex,
     );
 
+    // Get the words container
+    const wordsElement = document.getElementById("words");
+    if (!wordsElement) {
+      console.error("[Piano] #words element not found");
+      return;
+    }
+
     // Clear the piano staff container (not the words container!)
-    const pianoStaffContainer = document.getElementById("pianoStaffContainer");
-    if (pianoStaffContainer) {
+    // const pianoStaffContainer = document.getElementById("pianoStaffContainer");
+    let pianoStaffContainer = document.getElementById("pianoStaffContainer");
+    if (!pianoStaffContainer) {
+      pianoStaffContainer = document.createElement("div");
+      pianoStaffContainer.id = "pianoStaffContainer";
+      pianoStaffContainer.style.position = "relative";
+      // pianoStaffContainer.style.width = "100%";
+      // pianoStaffContainer.style.minHeight = "800px";
+      pianoStaffContainer.style.pointerEvents = "none";
+      pianoStaffContainer.style.zIndex = "10";
+      pianoStaffContainer.style.display = "flex";
+      pianoStaffContainer.style.flexDirection = "row";
+      pianoStaffContainer.style.alignItems = "center";
+      pianoStaffContainer.style.justifyContent = "center";
+      // pianoStaffContainer.style.marginTop = "2rem";
+      pianoStaffContainer.style.backgroundColor = "rgba(255, 0, 0, 0.1)"; // Debug: red tint
+      pianoStaffContainer.style.border = "2px solid red"; // Debug: red border
+      wordsElement.parentElement?.insertBefore(
+        pianoStaffContainer,
+        wordsElement,
+      );
+      console.log("[Piano] Created pianoStaffContainer:", pianoStaffContainer);
+    } else {
       pianoStaffContainer.innerHTML = "";
     }
 
     // Get responsive dimensions
     const { width, height } = getStaffDimensions();
+    console.log("[Piano] Staff dimensions:", width, "x", height);
 
     // Create a new Factory instance (VexFlow requires fresh factory for each render)
     vf = new Factory({
@@ -246,6 +184,10 @@ function renderNoteWindow(): void {
 
     console.log("[Piano] VexFlow notation:", vexFlowNotes);
 
+    for (const observer of allNotesObservers) {
+      observer.disconnect();
+    }
+
     // Add the stave with notes
     const bar_width = width / MEASURES_TO_RENDER;
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
@@ -266,7 +208,67 @@ function renderNoteWindow(): void {
           time: "4/4",
         },
       );
-      console.log("[Piano] Created notes for measure", i, ":", notes);
+      for (let n = 0; n < notes.length; n++) {
+        const globalNoteIndex = startIndex + i * BEATS_PER_MEASURE + n;
+        const config = { attributes: true };
+        const targetNode = TestUi.getWordElement(globalNoteIndex);
+        if (!targetNode) {
+          continue;
+        }
+
+        if (targetNode.classList.contains("error")) {
+          notes[n].setStyle({ fillStyle: "red", strokeStyle: "red" });
+          continue;
+        } else if (targetNode.classList.contains("typed")) {
+          notes[n].setStyle({ fillStyle: "green", strokeStyle: "green" });
+          continue;
+        }
+
+        const callback = (mutationList, observer) => {
+          for (const mutation of mutationList) {
+            if (
+              mutation.type === "attributes" &&
+              mutation.attributeName == "class"
+            ) {
+              const svg = notes[n].getSVGElement();
+              if (!svg) {
+                return;
+              }
+
+              let newColor = "black"; // Default color
+              if (targetNode.classList.contains("error")) {
+                newColor = "red";
+              } else if (targetNode.classList.contains("typed")) {
+                newColor = "green";
+              } else if (targetNode.classList.contains("active")) {
+                newColor = "blue"; // Active note color
+              }
+
+              // Highlight the note as active
+              svg.querySelectorAll("*").forEach((child) => {
+                child.setAttribute("fill", newColor);
+                child.setAttribute("stroke", newColor);
+              });
+              console.log(
+                `[Piano] Note ${globalNoteIndex} attribute changed:`,
+                mutation,
+              );
+            }
+          }
+        };
+        const observer = new MutationObserver(callback);
+        observer.observe(targetNode, config);
+        allNotesObservers.push(observer);
+      }
+
+      // let newColor = correct ? "green" : "red";
+      // const svg = allNotes[index].getSVGElement();
+      // if (svg) {
+      //   svg.querySelectorAll("*").forEach((child) => {
+      //     child.setAttribute("fill", newColor);
+      //     child.setAttribute("stroke", newColor);
+      //   });
+      // }
       let voice = score.voice(notes);
       console.log("[Piano] Created voice for measure", i, ":", voice);
       let stave = system.addStave({
@@ -346,8 +348,8 @@ export function cleanupPianoUI(): void {
   console.log("[Piano] Cleaning up piano UI");
 
   // Reset state
-  vf = null;
-  allNotes = [];
+  // vf = null;
+  // allNotes = [];
   currentNoteIndex = 0;
 
   // Remove the piano staff container (leave #words intact for Monkeytype)
