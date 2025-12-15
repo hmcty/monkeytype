@@ -24,6 +24,7 @@ import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { getRandomNote } from "../piano/note-generator";
+import * as PianoUi from "../piano/piano-ui";
 import {
   areNotesEquivalent,
   encodeNote,
@@ -39,12 +40,6 @@ import {
   initializeKeyboardFallback,
   cleanupKeyboardFallback,
 } from "../piano/keyboard-fallback";
-import {
-  initializePianoUI,
-  cleanupPianoUI,
-  registerNote,
-  advanceNote,
-} from "../piano/piano-ui";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -785,62 +780,25 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
   },
   piano_sightreading: {
     getWord(_wordset?: Wordset, _wordIndex?: number): string {
-      const difficulty = Config.pianoDifficulty || "beginner";
       const note = getRandomNote();
-      console.log("[Piano] getWord() generated:", note);
-
-      // Register this note with the piano UI for rendering
-      registerNote(note);
-
-      // Encode the note as a single character for Monkeytype's character-by-character processing
+      PianoUi.getDisplay().addNote(note);
       const encodedNote = encodeNote(note);
-      console.log(
-        "[Piano] Encoded as:",
-        encodedNote,
-        "charCode:",
-        encodedNote.charCodeAt(0).toString(16),
-      );
-
       return encodedNote;
     },
     onShowWords(): void {
-      console.log("[Piano] onShowWords() called - initializing piano UI");
-      initializePianoUI();
-      console.log("[Piano] onShowWords() ended");
+      PianoUi.getDisplay().render();
     },
     getWordHtml(char: string, letterTag?: boolean): string {
-      // char is now an encoded note (single character)
-      // Return invisible marker - the VexFlow staff shows the actual note
-      console.log(
-        "[Piano] getWordHtml() called for encoded char:",
-        char,
-        "charCode:",
-        char.charCodeAt(0).toString(16),
-      );
-
       // Decode the note for display (though it will be invisible)
       const decodedNote = decodeNote(char);
-
       if (letterTag) {
-        // Return a proper letter element with the decoded note
-        // Keep it visible but transparent so Monkeytype's DOM navigation works
-        // return `<letter class='invisible'>${decodedNote}</letter>`;
-        // return "";
-        return `<letter class='invisible'>${decodedNote}</letter>`;
+        return `<letter>${decodedNote}</letter>`;
       } else {
         return decodedNote;
       }
     },
     isCharCorrect(char: string, originalChar: string): boolean {
-      // Both char and originalChar are encoded notes
-      console.log(
-        "[Piano] isCharCorrect() - char:",
-        char,
-        "original:",
-        originalChar,
-      );
-
-      advanceNote();
+      PianoUi.getDisplay().advanceNote();
 
       // Direct comparison (same encoding)
       if (char === originalChar) {
@@ -851,43 +809,13 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       try {
         const decodedChar = decodeNote(char);
         const decodedOriginal = decodeNote(originalChar);
-        console.log(
-          "[Piano] Decoded - char:",
-          decodedChar,
-          "original:",
-          decodedOriginal,
-        );
-
-        const isEquivalent = areNotesEquivalent(decodedChar, decodedOriginal);
-        if (isEquivalent) {
-          advanceNote();
-        }
-        return isEquivalent;
+        return areNotesEquivalent(decodedChar, decodedOriginal);
       } catch (error) {
-        console.error("[Piano] Failed to decode notes:", error);
         return false;
       }
     },
     async start(): Promise<void> {
-      console.log("[Piano] start() called - initializing piano sightreading");
-
-      // Initialize UI rendering for musical notation
-      initializePianoUI();
-      console.log("[Piano] Piano UI initialized");
-
-      // Try to initialize MIDI
-      // const success = await initializeMidi();
-      // console.log("[Piano] MIDI initialization success:", success);
-      // if (!success) {
-      //   // // Fall back to keyboard mode
-      //   // initializeKeyboardFallback();
-      //   console.log("[Piano] Keyboard fallback mode activated");
-      //   // Notifications.add(
-      //   //   "MIDI not available. Using keyboard fallback mode. Press keys a-k for notes.",
-      //   //   0,
-      //   //   { duration: 5 },
-      //   // );
-      // }
+      PianoUi.getDisplay().render();
     },
     rememberSettings(): void {
       save(
@@ -897,16 +825,11 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       );
     },
     applyGlobalCSS(): void {
-      // $("body").append('<div id="scanline" />');
-      // $("body").addClass("crtmode");
       $("#globalFunBoxTheme").attr("href", `funbox/piano_sightreading.css`);
     },
     clearGlobal(): void {
-      // $("#scanline").remove();
-      // $("body").removeClass("crtmode");
       $("#globalFunBoxTheme").attr("href", ``);
-
-      cleanupPianoUI();
+      PianoUi.getDisplay().reset();
     },
   },
 };
