@@ -11,14 +11,18 @@ import * as ThemeColors from "../../elements/theme-colors";
 
 // VexFlow factory instance
 let vf: Factory | null = null;
-let theme_colors: Map<ThemeColors.ColorName, string> | null = null;
 
 class NoteLetterSync {
+  theme_colors: Map<ThemeColors.ColorName, string> | null;
+
   constructor(letterContainer) {
     this.letterContainer = letterContainer;
     this.noteMap = new Map(); // letter div -> SVG element(s)
     this.observer = new MutationObserver(this.handleMutations.bind(this));
-    this.theme_colors = null;
+    ThemeColors.getAll().then((colors) => {
+      this.theme_colors = colors;
+      this.updateAll();
+    });
   }
 
   sync(letterDiv, svgNote) {
@@ -28,9 +32,6 @@ class NoteLetterSync {
   }
 
   start() {
-    ThemeColors.getAll().then((colors) => {
-      this.theme_colors = colors;
-    });
     this.observer.observe(this.letterContainer, {
       attributes: true,
       attributeFilter: ["class"],
@@ -38,11 +39,14 @@ class NoteLetterSync {
     });
   }
 
+  updateAll() {
+    for (const [letterEl, note] of this.noteMap.entries()) {
+      this.assignColor(letterEl as HTMLElement, note);
+    }
+  }
+
   assignColor(wordEl: HTMLElement, note: StemmableNote) {
     if (!this.theme_colors) {
-      console.warn(
-        "[NoteLetterSync] Theme colors not loaded yet, cannot assign color",
-      );
       return;
     }
 
@@ -55,7 +59,7 @@ class NoteLetterSync {
       new_color = this.theme_colors.main; // Active note color
     }
 
-    console.log("[NoteLetterSync] Assigning color", new_color, "to note", note);
+    // console.log("[NoteLetterSync] Assigning color", new_color, "to note", note);
 
     let svgEl: SVGElement | null = note.getSVGElement();
     if (svgEl) {
@@ -69,10 +73,7 @@ class NoteLetterSync {
   }
 
   handleMutations(mutations) {
-    if (theme_colors) {
-      console.warn(
-        "[NoteLetterSync] Theme colors not loaded yet, skipping mutation handling",
-      );
+    if (!this.theme_colors) {
       return;
     }
 
@@ -81,7 +82,12 @@ class NoteLetterSync {
         continue;
       }
 
-      console.log("[NoteLetterSync] Mutation observed:", mut);
+      // if (mut.target.id === "words") {
+      //   renderNoteWindow();
+      //   continue;
+      // }
+
+      // console.log("[NoteLetterSync] Mutation observed:", mut);
       const note: StemmableNote = this.noteMap.get(mut.target);
       if (note) {
         this.assignColor(mut.target as HTMLElement, note);
@@ -142,7 +148,7 @@ export function registerNote(note: string): void {
   allNotes.push(note);
 
   // Re-render the visible window
-  renderNoteWindow();
+  // renderNoteWindow();
 }
 
 /**

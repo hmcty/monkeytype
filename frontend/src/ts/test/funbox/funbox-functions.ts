@@ -804,7 +804,9 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       return encodedNote;
     },
     onShowWords(): void {
+      console.log("[Piano] onShowWords() called - initializing piano UI");
       initializePianoUI();
+      console.log("[Piano] onShowWords() ended");
     },
     getWordHtml(char: string, letterTag?: boolean): string {
       // char is now an encoded note (single character)
