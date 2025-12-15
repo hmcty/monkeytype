@@ -7,16 +7,95 @@ import { Factory, StemmableNote } from "vexflow";
 import * as ActivePage from "../../states/active-page";
 import * as Config from "../../config";
 import * as TestUi from "../test-ui";
+import * as ThemeColors from "../../elements/theme-colors";
 
 // VexFlow factory instance
 let vf: Factory | null = null;
+let theme_colors: Map<ThemeColors.ColorName, string> | null = null;
+
+class NoteLetterSync {
+  constructor(letterContainer) {
+    this.letterContainer = letterContainer;
+    this.noteMap = new Map(); // letter div -> SVG element(s)
+    this.observer = new MutationObserver(this.handleMutations.bind(this));
+    this.theme_colors = null;
+  }
+
+  sync(letterDiv, svgNote) {
+    console.log("[NoteLetterSync] Syncing", letterDiv, "to", svgNote);
+    this.assignColor(letterDiv as HTMLElement, svgNote);
+    this.noteMap.set(letterDiv, svgNote);
+  }
+
+  start() {
+    ThemeColors.getAll().then((colors) => {
+      this.theme_colors = colors;
+    });
+    this.observer.observe(this.letterContainer, {
+      attributes: true,
+      attributeFilter: ["class"],
+      subtree: true,
+    });
+  }
+
+  assignColor(wordEl: HTMLElement, note: StemmableNote) {
+    if (!this.theme_colors) {
+      console.warn(
+        "[NoteLetterSync] Theme colors not loaded yet, cannot assign color",
+      );
+      return;
+    }
+
+    let new_color = this.theme_colors.sub;
+    if (wordEl.classList.contains("error")) {
+      new_color = this.theme_colors.error;
+    } else if (wordEl.classList.contains("typed")) {
+      new_color = this.theme_colors.text;
+    } else if (wordEl.classList.contains("active")) {
+      new_color = this.theme_colors.main; // Active note color
+    }
+
+    console.log("[NoteLetterSync] Assigning color", new_color, "to note", note);
+
+    let svgEl: SVGElement | null = note.getSVGElement();
+    if (svgEl) {
+      svgEl.querySelectorAll("*").forEach((child) => {
+        child.setAttribute("fill", new_color);
+        child.setAttribute("stroke", new_color);
+      });
+    } else {
+      note.setStyle({ fillStyle: new_color, strokeStyle: new_color });
+    }
+  }
+
+  handleMutations(mutations) {
+    if (theme_colors) {
+      console.warn(
+        "[NoteLetterSync] Theme colors not loaded yet, skipping mutation handling",
+      );
+      return;
+    }
+
+    for (const mut of mutations) {
+      if (mut.type !== "attributes" || mut.attributeName !== "class") {
+        continue;
+      }
+
+      console.log("[NoteLetterSync] Mutation observed:", mut);
+      const note: StemmableNote = this.noteMap.get(mut.target);
+      if (note) {
+        this.assignColor(mut.target as HTMLElement, note);
+      }
+    }
+  }
+}
 
 // Note tracking
 let allNotes: string[] = [];
-let renderedNotes: StemmableNote[] = [];
 let currentNoteIndex = 0;
-let allNotesObservers: MutationObserver[] = [];
 // const VISIBLE_NOTE_COUNT = 12; // Number of notes visible at once
+
+let noteLetterSync: NoteLetterSync | null = null;
 
 const BEATS_PER_MEASURE = 4;
 const MEASURES_TO_RENDER = 4;
@@ -88,10 +167,10 @@ export function markNoteAsPlayed(index: number, correct: boolean): void {}
  * Render the current window of visible notes
  */
 function renderNoteWindow(): void {
-  if (ActivePage.get() !== "test") {
-    console.log("[Piano] Skipping render - not ready or not on test page");
-    return;
-  }
+  // if (ActivePage.get() !== "test") {
+  //   console.log("[Piano] Skipping render - not ready or not on test page");
+  //   return;
+  // }
 
   try {
     // Get the visible notes (current index + next N notes)
@@ -136,13 +215,18 @@ function renderNoteWindow(): void {
       pianoStaffContainer.style.alignItems = "center";
       pianoStaffContainer.style.justifyContent = "center";
       // pianoStaffContainer.style.marginTop = "2rem";
-      pianoStaffContainer.style.backgroundColor = "rgba(255, 0, 0, 0.1)"; // Debug: red tint
-      pianoStaffContainer.style.border = "2px solid red"; // Debug: red border
-      wordsElement.parentElement?.insertBefore(
-        pianoStaffContainer,
-        wordsElement,
-      );
+      // pianoStaffContainer.style.backgroundColor = "rgba(255, 0, 0, 0.1)"; // Debug: red tint
+      // pianoStaffContainer.style.border = "2px solid red"; // Debug: red border
+      // wordsElement.parentElement?.insertBefore(
+      //   pianoStaffContainer,
+      //   wordsElement,
+      // );
+      // wordsElement.appendChild(pianoStaffContainer);
+      wordsElement.prepend(pianoStaffContainer);
       console.log("[Piano] Created pianoStaffContainer:", pianoStaffContainer);
+
+      noteLetterSync = new NoteLetterSync(wordsElement);
+      noteLetterSync.start();
     } else {
       pianoStaffContainer.innerHTML = "";
     }
@@ -184,10 +268,6 @@ function renderNoteWindow(): void {
 
     console.log("[Piano] VexFlow notation:", vexFlowNotes);
 
-    for (const observer of allNotesObservers) {
-      observer.disconnect();
-    }
-
     // Add the stave with notes
     const bar_width = width / MEASURES_TO_RENDER;
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
@@ -213,62 +293,16 @@ function renderNoteWindow(): void {
         const config = { attributes: true };
         const targetNode = TestUi.getWordElement(globalNoteIndex);
         if (!targetNode) {
+          console.warn(
+            `[Piano] No target node found for note index ${globalNoteIndex}`,
+          );
           continue;
         }
 
-        if (targetNode.classList.contains("error")) {
-          notes[n].setStyle({ fillStyle: "red", strokeStyle: "red" });
-          continue;
-        } else if (targetNode.classList.contains("typed")) {
-          notes[n].setStyle({ fillStyle: "green", strokeStyle: "green" });
-          continue;
-        }
-
-        const callback = (mutationList, observer) => {
-          for (const mutation of mutationList) {
-            if (
-              mutation.type === "attributes" &&
-              mutation.attributeName == "class"
-            ) {
-              const svg = notes[n].getSVGElement();
-              if (!svg) {
-                return;
-              }
-
-              let newColor = "black"; // Default color
-              if (targetNode.classList.contains("error")) {
-                newColor = "red";
-              } else if (targetNode.classList.contains("typed")) {
-                newColor = "green";
-              } else if (targetNode.classList.contains("active")) {
-                newColor = "blue"; // Active note color
-              }
-
-              // Highlight the note as active
-              svg.querySelectorAll("*").forEach((child) => {
-                child.setAttribute("fill", newColor);
-                child.setAttribute("stroke", newColor);
-              });
-              console.log(
-                `[Piano] Note ${globalNoteIndex} attribute changed:`,
-                mutation,
-              );
-            }
-          }
-        };
-        const observer = new MutationObserver(callback);
-        observer.observe(targetNode, config);
-        allNotesObservers.push(observer);
+        // Sync note letter div with SVG element
+        noteLetterSync.sync(targetNode, notes[n]);
       }
 
-      // let newColor = correct ? "green" : "red";
-      // const svg = allNotes[index].getSVGElement();
-      // if (svg) {
-      //   svg.querySelectorAll("*").forEach((child) => {
-      //     child.setAttribute("fill", newColor);
-      //     child.setAttribute("stroke", newColor);
-      //   });
-      // }
       let voice = score.voice(notes);
       console.log("[Piano] Created voice for measure", i, ":", voice);
       let stave = system.addStave({
@@ -282,16 +316,6 @@ function renderNoteWindow(): void {
         stave.addTimeSignature("4/4");
       }
     }
-
-    // voice.setStrict(false); // Allow notes outside the staff
-    // system
-    //   .addStave({
-    //     voices: voices,
-    //     options: {
-    //       spacingBetweenLinesPx: 10,
-    //     },
-    //   })
-    //   .addClef(clef);
 
     // Draw the staff
     vf.draw();
@@ -351,6 +375,7 @@ export function cleanupPianoUI(): void {
   // vf = null;
   // allNotes = [];
   currentNoteIndex = 0;
+  noteLetterSync = null;
 
   // Remove the piano staff container (leave #words intact for Monkeytype)
   const pianoStaffContainer = document.getElementById("pianoStaffContainer");

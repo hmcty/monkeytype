@@ -528,8 +528,6 @@ function updateWordWrapperClasses(): void {
 export function showWords(): void {
   wordsEl.innerHTML = "";
 
-  let funbox = findSingleActiveFunboxWithFunction("buildWordHtml");
-
   if (Config.mode === "zen") {
     appendEmptyWordElement();
   } else {
@@ -545,6 +543,11 @@ export function showWords(): void {
   });
   updateWordWrapperClasses();
   PaceCaret.resetCaretPosition();
+
+  const funbox = findSingleActiveFunboxWithFunction("onShowWords");
+  if (funbox) {
+    funbox.functions.onShowWords();
+  }
 }
 
 export function appendEmptyWordElement(

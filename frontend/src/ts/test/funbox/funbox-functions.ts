@@ -62,6 +62,7 @@ export type FunboxFunctions = {
   isCharCorrect?: (char: string, originalChar: string) => boolean;
   handleKeydown?: (event: KeyboardEvent) => Promise<void>;
   getResultContent?: () => string;
+  onShowWords?: () => void;
   start?: () => void;
   restart?: () => void;
   getWordHtml?: (char: string, letterTag?: boolean) => string;
@@ -802,6 +803,9 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
 
       return encodedNote;
     },
+    onShowWords(): void {
+      initializePianoUI();
+    },
     getWordHtml(char: string, letterTag?: boolean): string {
       // char is now an encoded note (single character)
       // Return invisible marker - the VexFlow staff shows the actual note
@@ -818,11 +822,12 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       if (letterTag) {
         // Return a proper letter element with the decoded note
         // Keep it visible but transparent so Monkeytype's DOM navigation works
+        // return `<letter class='invisible'>${decodedNote}</letter>`;
+        // return "";
         return `<letter class='invisible'>${decodedNote}</letter>`;
       } else {
-        // return "";
+        return decodedNote;
       }
-      return decodedNote;
     },
     isCharCorrect(char: string, originalChar: string): boolean {
       // Both char and originalChar are encoded notes
@@ -838,7 +843,6 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       // Direct comparison (same encoding)
       if (char === originalChar) {
         return true;
-        advanceNote();
       }
 
       // Decode and check enharmonic equivalents (C# = Db, etc.)
@@ -883,23 +887,24 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       //   // );
       // }
     },
-    clearGlobal(): void {
-      // Cleanup UI
-      cleanupPianoUI();
-
-      // Cleanup both MIDI and keyboard fallback
-      // if (isMidiActive()) {
-      //   cleanupMidi();
-      // } else {
-      //   cleanupKeyboardFallback();
-      // }
-    },
     rememberSettings(): void {
       save(
         "highlightMode",
         Config.highlightMode,
         UpdateConfig.setHighlightMode,
       );
+    },
+    applyGlobalCSS(): void {
+      // $("body").append('<div id="scanline" />');
+      // $("body").addClass("crtmode");
+      $("#globalFunBoxTheme").attr("href", `funbox/piano_sightreading.css`);
+    },
+    clearGlobal(): void {
+      // $("#scanline").remove();
+      // $("body").removeClass("crtmode");
+      $("#globalFunBoxTheme").attr("href", ``);
+
+      cleanupPianoUI();
     },
   },
 };
