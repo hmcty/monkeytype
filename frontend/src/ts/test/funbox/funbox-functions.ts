@@ -24,7 +24,7 @@ import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
 import { getRandomNote } from "../piano/note-generator";
-import * as PianoUi from "../piano/piano-ui";
+import { PianoUi } from "../piano/piano-ui";
 import {
   areNotesEquivalent,
   encodeNote,
@@ -781,12 +781,11 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
   piano_sightreading: {
     getWord(_wordset?: Wordset, _wordIndex?: number): string {
       const note = getRandomNote();
-      PianoUi.getDisplay().addNote(note);
       const encodedNote = encodeNote(note);
       return encodedNote;
     },
     onShowWords(): void {
-      PianoUi.getDisplay().render();
+      PianoUi.GetInstance().Render();
     },
     getWordHtml(char: string, letterTag?: boolean): string {
       // Decode the note for display (though it will be invisible)
@@ -798,7 +797,7 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       }
     },
     isCharCorrect(char: string, originalChar: string): boolean {
-      PianoUi.getDisplay().advanceNote();
+      PianoUi.GetInstance().AdvanceNote();
 
       // Direct comparison (same encoding)
       if (char === originalChar) {
@@ -815,7 +814,10 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       }
     },
     async start(): Promise<void> {
-      PianoUi.getDisplay().render();
+      PianoUi.GetInstance().Render();
+    },
+    async restart(): Promise<void> {
+      PianoUi.GetInstance().Reset();
     },
     rememberSettings(): void {
       save(
@@ -829,7 +831,7 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     },
     clearGlobal(): void {
       $("#globalFunBoxTheme").attr("href", ``);
-      PianoUi.getDisplay().reset();
+      PianoUi.GetInstance().Reset();
     },
   },
 };

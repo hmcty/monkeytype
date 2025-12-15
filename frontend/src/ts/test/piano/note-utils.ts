@@ -259,6 +259,7 @@ export function getEnharmonicEquivalent(note: string): string[] {
 export function areNotesEquivalent(note1: string, note2: string): boolean {
   if (note1 === note2) return true;
 
+  console.log("[Piano] Checking equivalence between", note1, "and", note2);
   const equivalents = getEnharmonicEquivalent(note1);
   return equivalents.includes(note2);
 }
