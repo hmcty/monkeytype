@@ -19,5 +19,14 @@
     .stave.inactive {
       opacity: 0.5;
     }
+
+    .vf-annotation {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+
+    .vf-annotation.show {
+      opacity: 1;
+    }
   }
 }

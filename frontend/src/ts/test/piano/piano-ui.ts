@@ -3,7 +3,7 @@
  * Manages VexFlow rendering and note tracking for piano sightreading
  */
 
-import { Factory, StemmableNote, EasyScore } from "vexflow";
+import { Factory, StemmableNote, EasyScore, Annotation } from "vexflow";
 import * as ConfigEvent from "../../observables/config-event";
 import * as TestUi from "../test-ui";
 import * as ActivePage from "../../states/active-page";
@@ -175,9 +175,11 @@ export class PianoUi {
 
   applyThemeToNote(wordEl: HTMLElement, note: StemmableNote) {
     let newColor = this.untypedColor;
+    const isTyped = wordEl.classList.contains("typed");
+
     if (wordEl.classList.contains("error")) {
       newColor = this.incorrectColor;
-    } else if (wordEl.classList.contains("typed")) {
+    } else if (isTyped) {
       newColor = this.correctColor;
     } else if (wordEl.classList.contains("active")) {
       newColor = this.mainColor; // Active note color
@@ -187,8 +189,22 @@ export class PianoUi {
     let svgEl: SVGElement | null = note.getSVGElement();
     if (svgEl) {
       svgEl.querySelectorAll("*").forEach((child) => {
+        // Skip annotation elements when applying note color
+        if (child.getAttribute("class")?.includes("vf-annotation")) {
+          return;
+        }
         child.setAttribute("fill", newColor);
         child.setAttribute("stroke", newColor);
+      });
+
+      // Handle annotation visibility with CSS class
+      const annotations = svgEl.querySelectorAll(".vf-annotation");
+      annotations.forEach((annotation) => {
+        if (isTyped) {
+          annotation.classList.add("show");
+        } else {
+          annotation.classList.remove("show");
+        }
       });
     } else {
       note.setStyle({ fillStyle: newColor, strokeStyle: newColor });
@@ -262,8 +278,9 @@ export class PianoUi {
         break;
       }
 
-      const note = `${noteToVexFlowNotation(wordEl.childNodes[0].textContent)}/q`;
-      notesToRender.push({ wordEl: wordEl, note: note });
+      const noteName = wordEl.childNodes[0].textContent;
+      const note = `${noteToVexFlowNotation(noteName)}/q`;
+      notesToRender.push({ wordEl: wordEl, note: note, noteName: noteName });
       endIndex++;
     }
 
@@ -284,6 +301,8 @@ export class PianoUi {
     score.set({ time: "4/4" });
 
     const bar_width = width / MEASURES_TO_RENDER;
+    const allNotesAndWords: Array<{ wordEl: HTMLElement; note: StemmableNote }> = [];
+
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
       const system = vf.System({
         x: i * bar_width,
@@ -297,7 +316,7 @@ export class PianoUi {
       const barStr = barNotesToRender.map((n) => n.note).join(", ");
       const notes = score.notes(barStr);
 
-      // Apply styles and map mutation observer
+      // Add annotations and track notes for later theme application
       barNotesToRender.forEach((n, idx) => {
         // If no word element, assume it's a rest
         if (n.wordEl === null) {
@@ -310,8 +329,24 @@ export class PianoUi {
             strokeStyle: this.untypedColor,
           });
         } else if (notes[idx] !== undefined) {
+          // Add annotation with note name
+          const annotation = new Annotation(n.noteName);
+          annotation.setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
+          annotation.setFont("Arial", 10);
+
+          // Set text color for annotations
+          if (this.textColor) {
+            annotation.setStyle({
+              fillStyle: this.textColor,
+              strokeStyle: this.textColor,
+            });
+          }
+
+          notes[idx].addModifier(annotation, 0);
+
           this.wordElToNote.set(n.wordEl, notes[idx]);
-          this.applyThemeToNote(n.wordEl, notes[idx]);
+          // Store for theme application after SVG is created
+          allNotesAndWords.push({ wordEl: n.wordEl, note: notes[idx] });
         }
       });
 
@@ -340,6 +375,11 @@ export class PianoUi {
     try {
       vf.draw();
       this.renderedStaves.add(staveIndexToRender);
+
+      // Apply themes after SVG is created
+      allNotesAndWords.forEach(({ wordEl, note }) => {
+        this.applyThemeToNote(wordEl, note);
+      });
     } catch (error) {
       console.error("[StaveDisplay] Failed to render notes:", error);
     }
