@@ -17,6 +17,7 @@ export class PianoUi {
 
   // VexFlow components
   currentNoteIndex: number;
+  currentStaveIndex: number;
 
   // Theme mapping
   wordElToNote: Map<HTMLElement, StemmableNote>;
@@ -30,6 +31,7 @@ export class PianoUi {
 
   constructor() {
     this.currentNoteIndex = 0;
+    this.currentStaveIndex = 0;
 
     this.wordElToNote = new Map();
     this.observer = new MutationObserver(this.onWordMutation.bind(this));
@@ -81,7 +83,7 @@ export class PianoUi {
       container.style.pointerEvents = "none";
       container.style.zIndex = "10";
       container.style.display = "flex";
-      container.style.flexDirection = "row";
+      container.style.flexDirection = "column";
       container.style.alignItems = "center";
       container.style.justifyContent = "center";
       wordsEl.prepend(container);
@@ -126,25 +128,48 @@ export class PianoUi {
     }
   }
 
+  getStave(index: number): HTMLElement | null {
+    const staveEl = document.getElementById(`stave${index}`);
+    return staveEl;
+  }
+
   Render() {
     if (ActivePage.get() !== "test") {
       return;
     }
 
+    const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
+    const lookaheadIndex = nextStaveStart - 1;
+    const oldStaveEl = this.getStave(this.currentStaveIndex);
+    let staveIndexToRender = this.currentStaveIndex + 1;
+    if (this.currentNoteIndex < lookaheadIndex && oldStaveEl) {
+      // No need to render a new stave yet
+      return;
+    } else if (oldStaveEl === null) {
+      staveIndexToRender = this.currentStaveIndex;
+    }
+
     // TODO: Confirm a new factory is required for each render
     const containerEl = this.getContainer();
-    containerEl.innerHTML = "";
 
+    // Create a new div to hold stave with id: stave{Idx}
+    const staveEl = document.createElement("div");
+    staveEl.id = `stave${staveIndexToRender}`;
+    staveEl.className = "stave";
+    // staveEl.style.marginRight = "10px";
+    containerEl.appendChild(staveEl);
+    
+    // containerEl.innerHTML = "";
     const { width, height } = getStaveDimensions();
     const vf = new Factory({
       renderer: {
-        elementId: containerEl.id,
+        elementId: staveEl.id,
         width: width,
         height: height,
       },
     });
 
-    let startIndex = Math.max(0, this.currentNoteIndex - 4);
+    let startIndex = staveIndexToRender * VISIBLE_NOTE_COUNT;
     let endIndex = startIndex;
 
     // Parse notes from word elements
@@ -159,6 +184,7 @@ export class PianoUi {
       notesToRender.push({ wordEl: wordEl, note: note });
       endIndex++;
     }
+    this.currentStaveEndIndex = endIndex;
 
     // Convert to VexFlow format and pad with rests
     if (notesToRender.length < VISIBLE_NOTE_COUNT) {
@@ -172,7 +198,7 @@ export class PianoUi {
     const score = vf.EasyScore();
     score.set({ time: "4/4" });
 
-    this.wordElToNote.clear();
+    // this.wordElToNote.clear();
     const bar_width = width / MEASURES_TO_RENDER;
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
       const system = vf.System({
@@ -191,11 +217,15 @@ export class PianoUi {
       barNotesToRender.forEach((n, idx) => {
         // If no word element, assume it's a rest
         if (n.wordEl === null) {
+          if (this.untypedColor === null) {
+            return;
+          }
+
           notes[idx].setStyle({
             fillStyle: this.untypedColor,
             strokeStyle: this.untypedColor,
           });
-        } else {
+        } else if (notes[idx] !== undefined) {
           this.wordElToNote.set(n.wordEl, notes[idx]);
           this.applyThemeToNote(n.wordEl, notes[idx]);
         }
@@ -215,10 +245,12 @@ export class PianoUi {
         stave.addTimeSignature("4/4");
       }
 
-      stave.setStyle({
-        fillStyle: this.textColor,
-        strokeStyle: this.textColor,
-      });
+      if (this.textColor) {
+        stave.setStyle({
+          fillStyle: this.textColor,
+          strokeStyle: this.textColor,
+        });
+      }
     }
 
     try {
@@ -237,6 +269,17 @@ export class PianoUi {
     // TODO: At some point, this shouldn't be necessary.
     //       We just need to stack and scroll staves.
     this.currentNoteIndex++;
+
+    const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
+    if (this.currentNoteIndex >= nextStaveStart) {
+      const oldStaveEl = this.getStave(this.currentStaveIndex);
+      if (oldStaveEl) {
+        oldStaveEl.classList.add("inactive");
+      }
+
+      this.currentStaveIndex += 1;
+    }
+
     this.Render();
   }
 

@@ -1,14 +1,23 @@
 #wordsWrapper {
+
   #paceCaret {
     display: none;
   }
+
   #caret {
     display: none;
   }
+
   #words {
     /* Actual words are hidden when musical staff is shown. */
     .word {
       display: none;
+    }
+  }
+
+  #staveContainer {
+    .stave.inactive {
+      opacity: 0.5;
     }
   }
 }
