@@ -26,6 +26,7 @@ import {
 } from "./funbox/list";
 import * as TestState from "./test-state";
 import * as PaceCaret from "./pace-caret";
+import { decodeNote, isEncodedNote } from "./piano/note-utils";
 import {
   cancelPendingAnimationFramesStartingWith,
   requestDebouncedAnimationFrame,
@@ -1382,14 +1383,43 @@ function buildWordLettersHTML(
   return out;
 }
 
+/**
+ * Decode a string containing encoded notes back to readable note names
+ */
+function decodeNoteString(str: string | undefined): string | undefined {
+  if (!str) return str;
+  if (!Config.funbox.includes("piano_sightreading")) return str;
+
+  let decoded = "";
+  for (const char of str) {
+    if (isEncodedNote(char)) {
+      try {
+        decoded += decodeNote(char);
+      } catch {
+        decoded += char; // Fallback to original if decode fails
+      }
+    } else {
+      decoded += char;
+    }
+  }
+  return decoded;
+}
+
 async function loadWordsHistory(): Promise<boolean> {
   $("#resultWordsHistory .words").empty();
   let wordsHTML = "";
   const inputHistoryLength = TestInput.input.getHistory().length;
   for (let i = 0; i < inputHistoryLength + 2; i++) {
-    const input = TestInput.input.getHistory(i);
-    const corrected = TestInput.corrected.getHistory(i);
-    const word = TestWords.words.get(i);
+    let input = TestInput.input.getHistory(i);
+    let corrected = TestInput.corrected.getHistory(i);
+    let word = TestWords.words.get(i);
+
+    console.log({ input, corrected, word });
+
+    // Decode notes if in piano sightreading mode
+    input = decodeNoteString(input);
+    corrected = decodeNoteString(corrected);
+    word = decodeNoteString(word);
     const containsKorean =
       input?.match(
         /[\uac00-\ud7af]|[\u1100-\u11ff]|[\u3130-\u318f]|[\ua960-\ua97f]|[\ud7b0-\ud7ff]/g,

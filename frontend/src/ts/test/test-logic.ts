@@ -26,6 +26,7 @@ import * as LiveAcc from "./live-acc";
 import * as LiveBurst from "./live-burst";
 import * as TimerProgress from "./timer-progress";
 import * as MidiHandler from "./piano/midi-handler";
+import { initializeKeyboardFallback } from "./piano/keyboard-fallback";
 
 import * as TestTimer from "./test-timer";
 import * as OutOfFocus from "./out-of-focus";
@@ -475,6 +476,8 @@ async function init(): Promise<boolean> {
     if (!MidiHandler.isMidiActive()) {
       MidiHandler.initializeMidi();
     }
+
+    initializeKeyboardFallback();
   }
 
   // polyglot mode, check to enable lazy mode if any support it

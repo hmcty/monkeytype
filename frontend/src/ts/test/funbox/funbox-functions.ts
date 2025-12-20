@@ -37,8 +37,7 @@ import {
   isMidiActive,
 } from "../piano/midi-handler";
 import {
-  initializeKeyboardFallback,
-  cleanupKeyboardFallback,
+  handleKeydown as pianoKeyboardFallbackHandleKeydown,
 } from "../piano/keyboard-fallback";
 
 export type FunboxFunctions = {
@@ -818,6 +817,9 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     },
     async restart(): Promise<void> {
       PianoUi.GetInstance().Reset();
+    },
+    async handleKeydown(event: KeyboardEvent): Promise<void> {
+      pianoKeyboardFallbackHandleKeydown(event);
     },
     rememberSettings(): void {
       save(

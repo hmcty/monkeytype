@@ -67,7 +67,7 @@ export function initializeKeyboardFallback(): void {
 /**
  * Handle keyboard events and convert to note input
  */
-function handleKeydown(event: KeyboardEvent): void {
+export function handleKeydown(event: KeyboardEvent): void {
   const key = event.key.toLowerCase();
   console.log("[Piano] Key pressed:", key);
 
@@ -93,7 +93,7 @@ function handleKeydown(event: KeyboardEvent): void {
   // Inject the encoded note as text input
   void emulateInsertText({
     data: encodedNote,
-    timeStamp: now,
+    now,
   });
 }
 
