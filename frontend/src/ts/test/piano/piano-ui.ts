@@ -86,6 +86,9 @@ export class PianoUi {
       container.style.flexDirection = "column";
       container.style.alignItems = "center";
       container.style.justifyContent = "center";
+      container.style.maxHeight = "60vh";
+      container.style.overflowY = "auto";
+      container.style.scrollBehavior = "smooth";
       wordsEl.prepend(container);
     }
 
@@ -139,7 +142,7 @@ export class PianoUi {
     }
 
     const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
-    const lookaheadIndex = nextStaveStart - 1;
+    const lookaheadIndex = nextStaveStart - VISIBLE_NOTE_COUNT;
     const oldStaveEl = this.getStave(this.currentStaveIndex);
     let staveIndexToRender = this.currentStaveIndex + 1;
     if (this.currentNoteIndex < lookaheadIndex && oldStaveEl) {
@@ -147,6 +150,11 @@ export class PianoUi {
       return;
     } else if (oldStaveEl === null) {
       staveIndexToRender = this.currentStaveIndex;
+    }
+
+    if (this.getStave(staveIndexToRender)) {
+      // Stave already rendered
+      return;
     }
 
     // TODO: Confirm a new factory is required for each render
@@ -266,9 +274,8 @@ export class PianoUi {
   }
 
   AdvanceNote() {
-    // TODO: At some point, this shouldn't be necessary.
-    //       We just need to stack and scroll staves.
     this.currentNoteIndex++;
+    this.Render();
 
     const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
     if (this.currentNoteIndex >= nextStaveStart) {
@@ -278,9 +285,14 @@ export class PianoUi {
       }
 
       this.currentStaveIndex += 1;
-    }
+      console.log(`[Piano] Advancing to stave ${this.currentStaveIndex}`);
 
-    this.Render();
+      // Scroll to the new active stave
+      const newStaveEl = this.getStave(this.currentStaveIndex);
+      if (newStaveEl) {
+        newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
   }
 
   static GetInstance(): PianoUi {
@@ -294,14 +306,14 @@ export class PianoUi {
 function getStaveDimensions(): { width: number; height: number } {
   const container = document.getElementById("wordsWrapper");
   let width = 500;
-  let height = 150;
+  let height = 100;
 
   if (container) {
     const rect = container.getBoundingClientRect();
 
     if (rect.width > 0 && rect.height > 0) {
       width = Math.max(500, Math.min(rect.width * 0.9, 2000));
-      height = Math.max(150, Math.min(rect.height * 0.8, 1000));
+      height = Math.max(100, Math.min(rect.height * 0.8, 1000));
     }
   }
 
