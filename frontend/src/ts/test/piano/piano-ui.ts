@@ -18,10 +18,14 @@ export class PianoUi {
   // VexFlow components
   currentNoteIndex: number;
   currentStaveIndex: number;
+  currentStaveEndIndex: number;
 
   // Theme mapping
   wordElToNote: Map<HTMLElement, StemmableNote>;
   observer: MutationObserver;
+  resizeObserver: ResizeObserver;
+  renderedStaves: Set<number>;
+  resizeDebounceTimer: number | null = null;
 
   mainColor: string | null = null;
   textColor: string | null = null;
@@ -32,10 +36,14 @@ export class PianoUi {
   constructor() {
     this.currentNoteIndex = 0;
     this.currentStaveIndex = 0;
+    this.currentStaveEndIndex = 0;
 
     this.wordElToNote = new Map();
+    this.renderedStaves = new Set();
     this.observer = new MutationObserver(this.onWordMutation.bind(this));
+    this.resizeObserver = new ResizeObserver(this.onResize.bind(this));
     this.fetchThemeColors();
+    this.setupResizeObserver();
   }
 
   fetchThemeColors(): void {
@@ -59,6 +67,50 @@ export class PianoUi {
     this.untypedColor = wordsSt
       .getPropertyValue("--untyped-letter-color")
       .trim();
+  }
+
+  setupResizeObserver(): void {
+    const wordsWrapper = document.getElementById("wordsWrapper");
+    if (wordsWrapper) {
+      this.resizeObserver.observe(wordsWrapper);
+    }
+  }
+
+  onResize(entries: ResizeObserverEntry[]): void {
+    if (entries.length === 0) return;
+
+    // Debounce resize events to avoid excessive re-rendering
+    if (this.resizeDebounceTimer !== null) {
+      clearTimeout(this.resizeDebounceTimer);
+    }
+
+    this.resizeDebounceTimer = window.setTimeout(() => {
+      this.reRenderAllStaves();
+      this.resizeDebounceTimer = null;
+    }, 250);
+  }
+
+  reRenderAllStaves(): void {
+    if (this.renderedStaves.size === 0) return;
+
+    // Save current scroll position
+    const container = document.getElementById("staveContainer");
+    const scrollTop = container?.scrollTop ?? 0;
+
+    // Clear wordElToNote mappings as we'll rebuild them
+    this.wordElToNote.clear();
+
+    // Re-render each stave
+    const stavesToRender = Array.from(this.renderedStaves);
+    this.renderedStaves.clear();
+    stavesToRender.forEach((staveIndex) => {
+      this.renderStave(staveIndex);
+    });
+
+    // Restore scroll position
+    if (container) {
+      container.scrollTop = scrollTop;
+    }
   }
 
   getContainer(): HTMLElement {
@@ -85,7 +137,7 @@ export class PianoUi {
       container.style.display = "flex";
       container.style.flexDirection = "column";
       container.style.alignItems = "center";
-      container.style.justifyContent = "center";
+      container.style.justifyContent = "flex-start";
       container.style.maxHeight = "60vh";
       container.style.overflowY = "auto";
       container.style.scrollBehavior = "smooth";
@@ -136,39 +188,41 @@ export class PianoUi {
     return staveEl;
   }
 
-  Render() {
-    if (ActivePage.get() !== "test") {
-      return;
-    }
+  getStavesToPreRender(): number {
+    const container = document.getElementById("staveContainer");
+    if (!container) return 3; // Default to 2 staves if container not found
 
-    const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
-    const lookaheadIndex = nextStaveStart - VISIBLE_NOTE_COUNT;
-    const oldStaveEl = this.getStave(this.currentStaveIndex);
-    let staveIndexToRender = this.currentStaveIndex + 1;
-    if (this.currentNoteIndex < lookaheadIndex && oldStaveEl) {
-      // No need to render a new stave yet
-      return;
-    } else if (oldStaveEl === null) {
-      staveIndexToRender = this.currentStaveIndex;
-    }
+    const containerHeight = container.clientHeight;
+    const { height: staveHeight } = getStaveDimensions();
 
-    if (this.getStave(staveIndexToRender)) {
-      // Stave already rendered
-      return;
-    }
+    // Calculate how many staves fit in viewport + 1 extra
+    const stavesInViewport = Math.ceil(containerHeight / staveHeight);
+    return Math.max(3, stavesInViewport + 1); // At least 2 staves
+  }
 
-    // TODO: Confirm a new factory is required for each render
+  renderStave(staveIndexToRender: number): void {
     const containerEl = this.getContainer();
 
+    // Check if stave already exists, if so remove it for re-render
+    let staveEl = this.getStave(staveIndexToRender);
+    if (staveEl) {
+      staveEl.remove();
+    }
+
     // Create a new div to hold stave with id: stave{Idx}
-    const staveEl = document.createElement("div");
+    staveEl = document.createElement("div");
     staveEl.id = `stave${staveIndexToRender}`;
     staveEl.className = "stave";
-    // staveEl.style.marginRight = "10px";
+
+    // Check if this stave should be marked inactive
+    if (staveIndexToRender < this.currentStaveIndex) {
+      staveEl.classList.add("inactive");
+    }
+
     containerEl.appendChild(staveEl);
-    
-    // containerEl.innerHTML = "";
+
     const { width, height } = getStaveDimensions();
+    console.log(`[Piano] Rendering stave ${staveIndexToRender} at ${width}x${height}`);
     const vf = new Factory({
       renderer: {
         elementId: staveEl.id,
@@ -192,7 +246,10 @@ export class PianoUi {
       notesToRender.push({ wordEl: wordEl, note: note });
       endIndex++;
     }
-    this.currentStaveEndIndex = endIndex;
+
+    if (staveIndexToRender === this.currentStaveIndex) {
+      this.currentStaveEndIndex = endIndex;
+    }
 
     // Convert to VexFlow format and pad with rests
     if (notesToRender.length < VISIBLE_NOTE_COUNT) {
@@ -206,7 +263,6 @@ export class PianoUi {
     const score = vf.EasyScore();
     score.set({ time: "4/4" });
 
-    // this.wordElToNote.clear();
     const bar_width = width / MEASURES_TO_RENDER;
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
       const system = vf.System({
@@ -263,19 +319,88 @@ export class PianoUi {
 
     try {
       vf.draw();
+      this.renderedStaves.add(staveIndexToRender);
     } catch (error) {
       console.error("[StaveDisplay] Failed to render notes:", error);
     }
   }
 
+  Render() {
+    if (ActivePage.get() !== "test") {
+      return;
+    }
+
+    // Determine starting point for rendering
+    const oldStaveEl = this.getStave(this.currentStaveIndex);
+    let startStaveIndex = this.currentStaveIndex;
+
+    // If current stave doesn't exist, start from there
+    if (oldStaveEl === null) {
+      startStaveIndex = this.currentStaveIndex;
+    } else {
+      // Check if we should start rendering ahead
+      const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
+      const lookaheadIndex = nextStaveStart - VISIBLE_NOTE_COUNT;
+      if (this.currentNoteIndex < lookaheadIndex) {
+        // Too early to render ahead, but still pre-render if needed
+        startStaveIndex = this.currentStaveIndex;
+      } else {
+        startStaveIndex = this.currentStaveIndex;
+      }
+    }
+
+    // Calculate how many staves to pre-render
+    const stavesToPreRender = this.getStavesToPreRender();
+
+    // Render staves to fill viewport + 1
+    for (let i = 0; i < stavesToPreRender; i++) {
+      const staveIndex = startStaveIndex + i;
+
+      // Check if we have enough word elements for this stave
+      const staveStartWordIndex = staveIndex * VISIBLE_NOTE_COUNT;
+      const hasWords = TestUi.getWordElement(staveStartWordIndex) !== null;
+      if (!hasWords && i > 0) {
+        // Stop if no words available (but always render at least current stave)
+        break;
+      }
+
+      // Only render if not already rendered
+      if (!this.getStave(staveIndex)) {
+        this.renderStave(staveIndex);
+      }
+    }
+  }
+
   Reset() {
     this.currentNoteIndex = 0;
+    this.currentStaveIndex = 0;
+    this.currentStaveEndIndex = 0;
+    this.renderedStaves.clear();
+    this.wordElToNote.clear();
+
+    // Clear all staves from container
+    const container = document.getElementById("staveContainer");
+    if (container) {
+      container.innerHTML = "";
+      container.scrollTop = 0;
+    }
+
     this.Render();
   }
 
   AdvanceNote() {
     this.currentNoteIndex++;
+
+    // Save scroll position before rendering
+    const container = document.getElementById("staveContainer");
+    const scrollTop = container?.scrollTop ?? 0;
+
     this.Render();
+
+    // Restore scroll position if still on first stave
+    if (this.currentStaveIndex === 0 && container) {
+      container.scrollTop = scrollTop;
+    }
 
     const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
     if (this.currentNoteIndex >= nextStaveStart) {
@@ -284,13 +409,16 @@ export class PianoUi {
         oldStaveEl.classList.add("inactive");
       }
 
+      const previousStaveIndex = this.currentStaveIndex;
       this.currentStaveIndex += 1;
       console.log(`[Piano] Advancing to stave ${this.currentStaveIndex}`);
 
-      // Scroll to the new active stave
-      const newStaveEl = this.getStave(this.currentStaveIndex);
-      if (newStaveEl) {
-        newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      // Only scroll if we've actually advanced past the first stave
+      if (previousStaveIndex > 0) {
+        const newStaveEl = this.getStave(this.currentStaveIndex);
+        if (newStaveEl) {
+          newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
       }
     }
   }
@@ -306,14 +434,14 @@ export class PianoUi {
 function getStaveDimensions(): { width: number; height: number } {
   const container = document.getElementById("wordsWrapper");
   let width = 500;
-  let height = 100;
+  let height = 150;
 
   if (container) {
     const rect = container.getBoundingClientRect();
 
     if (rect.width > 0 && rect.height > 0) {
       width = Math.max(500, Math.min(rect.width * 0.9, 2000));
-      height = Math.max(100, Math.min(rect.height * 0.8, 1000));
+      // height = Math.max(150, Math.min(rect.height * 0.8, 1000));
     }
   }
 
