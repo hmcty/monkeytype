@@ -87,11 +87,29 @@ export class PianoUi {
     this.resizeDebounceTimer = window.setTimeout(() => {
       this.reRenderAllStaves();
       this.resizeDebounceTimer = null;
-    }, 250);
+    }, 50);
   }
 
   reRenderAllStaves(): void {
     if (this.renderedStaves.size === 0) return;
+
+    // Check if dimensions have actually changed by comparing with first rendered stave
+    const newDimensions = getStaveDimensions();
+    const firstStaveIndex = Array.from(this.renderedStaves)[0];
+    const firstStaveEl = this.getStave(firstStaveIndex);
+
+    if (firstStaveEl) {
+      const svg = firstStaveEl.querySelector("svg");
+      if (svg) {
+        const currentWidth = parseInt(svg.getAttribute("width") || "0");
+        const currentHeight = parseInt(svg.getAttribute("height") || "0");
+
+        // If dimensions match, no need to re-render
+        if (currentWidth === newDimensions.width && currentHeight === newDimensions.height) {
+          return;
+        }
+      }
+    }
 
     // Save current scroll position
     const container = document.getElementById("staveContainer");
@@ -100,8 +118,16 @@ export class PianoUi {
     // Clear wordElToNote mappings as we'll rebuild them
     this.wordElToNote.clear();
 
-    // Re-render each stave
+    // Explicitly remove all existing staves before re-rendering
     const stavesToRender = Array.from(this.renderedStaves);
+    stavesToRender.forEach((staveIndex) => {
+      const staveEl = this.getStave(staveIndex);
+      if (staveEl) {
+        staveEl.remove();
+      }
+    });
+
+    // Re-render each stave with new dimensions
     this.renderedStaves.clear();
     stavesToRender.forEach((staveIndex) => {
       this.renderStave(staveIndex);
@@ -132,7 +158,7 @@ export class PianoUi {
       container = document.createElement("div");
       container.id = "staveContainer";
       container.style.position = "relative";
-      container.style.pointerEvents = "none";
+      container.style.pointerEvents = "auto";
       container.style.zIndex = "10";
       container.style.display = "flex";
       container.style.flexDirection = "column";
@@ -203,26 +229,20 @@ export class PianoUi {
   renderStave(staveIndexToRender: number): void {
     const containerEl = this.getContainer();
 
-    // Check if stave already exists, if so remove it for re-render
-    let staveEl = this.getStave(staveIndexToRender);
-    if (staveEl) {
-      staveEl.remove();
-    }
-
     // Create a new div to hold stave with id: stave{Idx}
-    staveEl = document.createElement("div");
+    const staveEl = document.createElement("div");
     staveEl.id = `stave${staveIndexToRender}`;
     staveEl.className = "stave";
+
+    console.log(`[StaveDisplay] Rendering stave index ${staveIndexToRender}`);
 
     // Check if this stave should be marked inactive
     if (staveIndexToRender < this.currentStaveIndex) {
       staveEl.classList.add("inactive");
     }
-
     containerEl.appendChild(staveEl);
 
     const { width, height } = getStaveDimensions();
-    console.log(`[Piano] Rendering stave ${staveIndexToRender} at ${width}x${height}`);
     const vf = new Factory({
       renderer: {
         elementId: staveEl.id,
@@ -390,17 +410,7 @@ export class PianoUi {
 
   AdvanceNote() {
     this.currentNoteIndex++;
-
-    // Save scroll position before rendering
-    const container = document.getElementById("staveContainer");
-    const scrollTop = container?.scrollTop ?? 0;
-
     this.Render();
-
-    // Restore scroll position if still on first stave
-    if (this.currentStaveIndex === 0 && container) {
-      container.scrollTop = scrollTop;
-    }
 
     const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
     if (this.currentNoteIndex >= nextStaveStart) {
@@ -411,15 +421,11 @@ export class PianoUi {
 
       const previousStaveIndex = this.currentStaveIndex;
       this.currentStaveIndex += 1;
-      console.log(`[Piano] Advancing to stave ${this.currentStaveIndex}`);
+    }
 
-      // Only scroll if we've actually advanced past the first stave
-      if (previousStaveIndex > 0) {
-        const newStaveEl = this.getStave(this.currentStaveIndex);
-        if (newStaveEl) {
-          newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }
+    const newStaveEl = this.getStave(this.currentStaveIndex);
+    if (newStaveEl) {
+      newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
