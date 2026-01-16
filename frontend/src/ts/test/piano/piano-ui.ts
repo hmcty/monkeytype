@@ -243,14 +243,14 @@ export class PianoUi {
 
   getStavesToPreRender(): number {
     const container = document.getElementById("staveContainer");
-    if (!container) return 3; // Default to 2 staves if container not found
+    if (container === null) return 3;
 
     const containerHeight = container.clientHeight;
     const { height: staveHeight } = getStaveDimensions();
 
     // Calculate how many staves fit in viewport + 1 extra
     const stavesInViewport = Math.ceil(containerHeight / staveHeight);
-    return Math.max(3, stavesInViewport + 1); // At least 2 staves
+    return Math.max(3, stavesInViewport + 1);
   }
 
   renderStave(staveIndexToRender: number): void {

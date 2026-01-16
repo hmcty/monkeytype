@@ -643,6 +643,13 @@ export async function centerActiveLine(): Promise<void> {
 export function updateWordsWrapperHeight(force = false): void {
   if (ActivePage.get() !== "test" || TestState.resultVisible) return;
   if (!force && Config.mode !== "custom") return;
+
+  // Skip height calculation for piano funbox - let staves control the height
+  if (Config.funbox.includes("piano_sightreading")) {
+    wordsWrapperEl.style.height = "";
+    return;
+  }
+
   const outOfFocusEl = document.querySelector(
     ".outOfFocusWarning",
   ) as HTMLElement;
@@ -1387,7 +1394,7 @@ function buildWordLettersHTML(
  * Decode a string containing encoded notes back to readable note names
  */
 function decodeNoteString(str: string | undefined): string | undefined {
-  if (!str) return str;
+  if (typeof str !== "string" || str === "") return str;
   if (!Config.funbox.includes("piano_sightreading")) return str;
 
   let decoded = "";
