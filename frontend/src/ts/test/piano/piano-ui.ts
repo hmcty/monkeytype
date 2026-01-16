@@ -3,7 +3,7 @@
  * Manages VexFlow rendering and note tracking for piano sightreading
  */
 
-import { Factory, StemmableNote, EasyScore, Annotation } from "vexflow";
+import { Factory, StemmableNote, Annotation } from "vexflow";
 import * as ConfigEvent from "../../observables/config-event";
 import * as TestUi from "../test-ui";
 import * as ActivePage from "../../states/active-page";
@@ -41,6 +41,7 @@ export class PianoUi {
     this.wordElToNote = new Map();
     this.renderedStaves = new Set();
     this.observer = new MutationObserver(this.onWordMutation.bind(this));
+    // eslint-disable-next-line compat/compat -- ResizeObserver used for piano UI responsiveness
     this.resizeObserver = new ResizeObserver(this.onResize.bind(this));
     this.fetchThemeColors();
     this.setupResizeObserver();
@@ -71,7 +72,7 @@ export class PianoUi {
 
   setupResizeObserver(): void {
     const wordsWrapper = document.getElementById("wordsWrapper");
-    if (wordsWrapper) {
+    if (wordsWrapper !== null) {
       this.resizeObserver.observe(wordsWrapper);
     }
   }
@@ -98,14 +99,17 @@ export class PianoUi {
     const firstStaveIndex = Array.from(this.renderedStaves)[0];
     const firstStaveEl = this.getStave(firstStaveIndex);
 
-    if (firstStaveEl) {
+    if (firstStaveEl !== null) {
       const svg = firstStaveEl.querySelector("svg");
-      if (svg) {
-        const currentWidth = parseInt(svg.getAttribute("width") || "0");
-        const currentHeight = parseInt(svg.getAttribute("height") || "0");
+      if (svg !== null) {
+        const currentWidth = parseInt(svg.getAttribute("width") ?? "0");
+        const currentHeight = parseInt(svg.getAttribute("height") ?? "0");
 
         // If dimensions match, no need to re-render
-        if (currentWidth === newDimensions.width && currentHeight === newDimensions.height) {
+        if (
+          currentWidth === newDimensions.width &&
+          currentHeight === newDimensions.height
+        ) {
           return;
         }
       }
@@ -122,7 +126,7 @@ export class PianoUi {
     const stavesToRender = Array.from(this.renderedStaves);
     stavesToRender.forEach((staveIndex) => {
       const staveEl = this.getStave(staveIndex);
-      if (staveEl) {
+      if (staveEl !== null) {
         staveEl.remove();
       }
     });
@@ -134,7 +138,7 @@ export class PianoUi {
     });
 
     // Restore scroll position
-    if (container) {
+    if (container !== null) {
       container.scrollTop = scrollTop;
     }
   }
@@ -173,7 +177,7 @@ export class PianoUi {
     return container;
   }
 
-  applyThemeToNote(wordEl: HTMLElement, note: StemmableNote) {
+  applyThemeToNote(wordEl: HTMLElement, note: StemmableNote): void {
     let newColor = this.untypedColor;
     const isTyped = wordEl.classList.contains("typed");
 
@@ -187,7 +191,7 @@ export class PianoUi {
 
     // If no SVG element exists, assume we are pre-render and set style
     let svgEl: SVGElement | null = note.getSVGElement();
-    if (svgEl) {
+    if (svgEl !== null && typeof newColor === "string" && newColor !== "") {
       svgEl.querySelectorAll("*").forEach((child) => {
         // Skip annotation elements when applying note color
         if (child.getAttribute("class")?.includes("vf-annotation")) {
@@ -206,12 +210,12 @@ export class PianoUi {
           annotation.classList.remove("show");
         }
       });
-    } else {
+    } else if (typeof newColor === "string" && newColor !== "") {
       note.setStyle({ fillStyle: newColor, strokeStyle: newColor });
     }
   }
 
-  onWordMutation(mutations: MutationRecord[]) {
+  onWordMutation(mutations: MutationRecord[]): void {
     for (const mut of mutations) {
       if (mut.type !== "attributes" || mut.attributeName !== "class") {
         continue;
@@ -301,7 +305,10 @@ export class PianoUi {
     score.set({ time: "4/4" });
 
     const bar_width = width / MEASURES_TO_RENDER;
-    const allNotesAndWords: Array<{ wordEl: HTMLElement; note: StemmableNote }> = [];
+    const allNotesAndWords: Array<{
+      wordEl: HTMLElement;
+      note: StemmableNote;
+    }> = [];
 
     for (let i = 0; i < MEASURES_TO_RENDER; i++) {
       const system = vf.System({
@@ -331,11 +338,13 @@ export class PianoUi {
         } else if (notes[idx] !== undefined) {
           // Add annotation with note name
           const annotation = new Annotation(n.noteName);
-          annotation.setVerticalJustification(Annotation.VerticalJustify.BOTTOM);
+          annotation.setVerticalJustification(
+            Annotation.VerticalJustify.BOTTOM,
+          );
           annotation.setFont("Arial", 10);
 
           // Set text color for annotations
-          if (this.textColor) {
+          if (this.textColor !== null) {
             annotation.setStyle({
               fillStyle: this.textColor,
               strokeStyle: this.textColor,
@@ -364,7 +373,7 @@ export class PianoUi {
         stave.addTimeSignature("4/4");
       }
 
-      if (this.textColor) {
+      if (this.textColor !== null) {
         stave.setStyle({
           fillStyle: this.textColor,
           strokeStyle: this.textColor,
@@ -385,7 +394,7 @@ export class PianoUi {
     }
   }
 
-  Render() {
+  Render(): void {
     if (ActivePage.get() !== "test") {
       return;
     }
@@ -431,7 +440,7 @@ export class PianoUi {
     }
   }
 
-  Reset() {
+  Reset(): void {
     this.currentNoteIndex = 0;
     this.currentStaveIndex = 0;
     this.currentStaveEndIndex = 0;
@@ -440,7 +449,7 @@ export class PianoUi {
 
     // Clear all staves from container
     const container = document.getElementById("staveContainer");
-    if (container) {
+    if (container !== null) {
       container.innerHTML = "";
       container.scrollTop = 0;
     }
@@ -448,29 +457,28 @@ export class PianoUi {
     this.Render();
   }
 
-  AdvanceNote() {
+  AdvanceNote(): void {
     this.currentNoteIndex++;
     this.Render();
 
     const nextStaveStart = (this.currentStaveIndex + 1) * VISIBLE_NOTE_COUNT;
     if (this.currentNoteIndex >= nextStaveStart) {
       const oldStaveEl = this.getStave(this.currentStaveIndex);
-      if (oldStaveEl) {
+      if (oldStaveEl !== null) {
         oldStaveEl.classList.add("inactive");
       }
 
-      const previousStaveIndex = this.currentStaveIndex;
       this.currentStaveIndex += 1;
     }
 
     const newStaveEl = this.getStave(this.currentStaveIndex);
-    if (newStaveEl) {
+    if (newStaveEl !== null) {
       newStaveEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
   }
 
   static GetInstance(): PianoUi {
-    if (this.#instance == null) {
+    if (this.#instance === null) {
       this.#instance = new PianoUi();
     }
     return this.#instance;
@@ -482,7 +490,7 @@ function getStaveDimensions(): { width: number; height: number } {
   let width = 500;
   let height = 150;
 
-  if (container) {
+  if (container !== null) {
     const rect = container.getBoundingClientRect();
 
     if (rect.width > 0 && rect.height > 0) {

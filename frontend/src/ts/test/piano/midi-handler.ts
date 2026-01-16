@@ -7,6 +7,20 @@ let activeInput: MIDIInput | null = null;
 let messageHandler: ((event: MIDIMessageEvent) => void) | null = null;
 
 /**
+ * Check if Web MIDI API is supported in the current browser
+ */
+export function checkMidiSupport(): { supported: boolean; message: string } {
+  if (typeof navigator.requestMIDIAccess === "undefined") {
+    return {
+      supported: false,
+      message:
+        "Web MIDI API not supported. Please use Chrome/Edge or enable MIDI in Firefox (dom.webaudio.midi.enabled).",
+    };
+  }
+  return { supported: true, message: "" };
+}
+
+/**
  * Initialize Web MIDI API and request access to MIDI devices
  * @returns Promise<boolean> - true if successful, false otherwise
  */
@@ -45,14 +59,7 @@ export async function initializeMidi(): Promise<boolean> {
       return false;
     }
   } catch (error) {
-    if (error instanceof NotSupportedError) {
-      console.warn(
-        "Web MIDI API not supported. Please use Chrome/Edge or enable MIDI in Firefox (dom.webaudio.midi.enabled).",
-      );
-    } else {
-      console.error("[Piano] Failed to initialize MIDI:", error);
-    }
-
+    console.error("[Piano] Failed to initialize MIDI:", error);
     return false;
   }
 }
