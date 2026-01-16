@@ -1,6 +1,7 @@
 import { midiNoteToNoteName, encodeNote } from "./note-utils";
 import Config from "../../config";
 import { emulateInsertText } from "../../input/handlers/insert-text";
+import * as TestState from "../test-state";
 
 let midiAccess: MIDIAccess | null = null;
 let activeInput: MIDIInput | null = null;
@@ -100,6 +101,11 @@ export function attachMidiListeners(input: MIDIInput): void {
  * @param event - The MIDI message event
  */
 function handleMidiMessage(event: MIDIMessageEvent): void {
+  // Ignore MIDI input if test is not active
+  if (TestState.resultVisible) {
+    return;
+  }
+
   const status = event.data[0] as number;
   const noteNumber = event.data[1] as number;
   const velocity = event.data[2] as number;

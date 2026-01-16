@@ -80,6 +80,9 @@ export class PianoUi {
   onResize(entries: ResizeObserverEntry[]): void {
     if (entries.length === 0) return;
 
+    // Don't try to resize if we're not on the test page
+    if (ActivePage.get() !== "test") return;
+
     // Debounce resize events to avoid excessive re-rendering
     if (this.resizeDebounceTimer !== null) {
       clearTimeout(this.resizeDebounceTimer);
@@ -93,6 +96,13 @@ export class PianoUi {
 
   reRenderAllStaves(): void {
     if (this.renderedStaves.size === 0) return;
+
+    // Don't try to re-render if we're not on the test page
+    if (ActivePage.get() !== "test") return;
+
+    // Check if the container still exists
+    const container = document.getElementById("staveContainer");
+    if (container === null) return;
 
     // Check if dimensions have actually changed by comparing with first rendered stave
     const newDimensions = getStaveDimensions();
@@ -116,8 +126,7 @@ export class PianoUi {
     }
 
     // Save current scroll position
-    const container = document.getElementById("staveContainer");
-    const scrollTop = container?.scrollTop ?? 0;
+    const scrollTop = container.scrollTop;
 
     // Clear wordElToNote mappings as we'll rebuild them
     this.wordElToNote.clear();
@@ -138,9 +147,7 @@ export class PianoUi {
     });
 
     // Restore scroll position
-    if (container !== null) {
-      container.scrollTop = scrollTop;
-    }
+    container.scrollTop = scrollTop;
   }
 
   getContainer(): HTMLElement {
@@ -447,6 +454,12 @@ export class PianoUi {
     this.renderedStaves.clear();
     this.wordElToNote.clear();
 
+    // Clear any pending resize timer
+    if (this.resizeDebounceTimer !== null) {
+      clearTimeout(this.resizeDebounceTimer);
+      this.resizeDebounceTimer = null;
+    }
+
     // Clear all staves from container
     const container = document.getElementById("staveContainer");
     if (container !== null) {
@@ -455,6 +468,22 @@ export class PianoUi {
     }
 
     this.Render();
+  }
+
+  Cleanup(): void {
+    // Disconnect observers to prevent errors when DOM elements are removed
+    this.observer.disconnect();
+    this.resizeObserver.disconnect();
+
+    // Clear any pending timers
+    if (this.resizeDebounceTimer !== null) {
+      clearTimeout(this.resizeDebounceTimer);
+      this.resizeDebounceTimer = null;
+    }
+
+    // Clear data structures
+    this.renderedStaves.clear();
+    this.wordElToNote.clear();
   }
 
   AdvanceNote(): void {

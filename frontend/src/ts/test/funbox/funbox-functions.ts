@@ -30,6 +30,7 @@ import {
   encodeNote,
   decodeNote,
 } from "../piano/note-utils";
+import { cleanupMidi } from "../piano/midi-handler";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -824,7 +825,8 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     },
     clearGlobal(): void {
       $("#globalFunBoxTheme").attr("href", ``);
-      PianoUi.GetInstance().Reset();
+      PianoUi.GetInstance().Cleanup();
+      cleanupMidi();
     },
   },
 };
