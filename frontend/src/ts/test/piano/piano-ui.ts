@@ -70,6 +70,33 @@ export class PianoUi {
       .trim();
   }
 
+  /**
+   * Get a dimmed version of a color for less prominent UI elements
+   */
+  getDimmedColor(color: string | null, opacity: number = 0.3): string {
+    if (color === null) return "rgba(128, 128, 128, 0.3)";
+
+    // If it's already an rgba color, adjust the opacity
+    const rgbaMatch = color.match(
+      /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*[\d.]+)?\)/,
+    );
+    if (rgbaMatch) {
+      return `rgba(${rgbaMatch[1]}, ${rgbaMatch[2]}, ${rgbaMatch[3]}, ${opacity})`;
+    }
+
+    // If it's a hex color, convert to rgba
+    const hexMatch = color.match(/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i);
+    if (hexMatch) {
+      const r = parseInt(hexMatch[1], 16);
+      const g = parseInt(hexMatch[2], 16);
+      const b = parseInt(hexMatch[3], 16);
+      return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+
+    // Fallback: return the original color with some default opacity
+    return color;
+  }
+
   setupResizeObserver(): void {
     const wordsWrapper = document.getElementById("wordsWrapper");
     if (wordsWrapper !== null) {
@@ -381,9 +408,11 @@ export class PianoUi {
       }
 
       if (this.textColor !== null) {
+        // Use dimmed color for stave lines to reduce visual clutter
+        const dimmedColor = this.getDimmedColor(this.textColor, 0.35);
         stave.setStyle({
-          fillStyle: this.textColor,
-          strokeStyle: this.textColor,
+          fillStyle: dimmedColor,
+          strokeStyle: dimmedColor,
         });
       }
     }
