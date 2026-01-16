@@ -29,16 +29,7 @@ import {
   areNotesEquivalent,
   encodeNote,
   decodeNote,
-  isEncodedNote,
 } from "../piano/note-utils";
-import {
-  initializeMidi,
-  cleanupMidi,
-  isMidiActive,
-} from "../piano/midi-handler";
-import {
-  handleKeydown as pianoKeyboardFallbackHandleKeydown,
-} from "../piano/keyboard-fallback";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -818,9 +809,9 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
     async restart(): Promise<void> {
       PianoUi.GetInstance().Reset();
     },
-    async handleKeydown(event: KeyboardEvent): Promise<void> {
-      pianoKeyboardFallbackHandleKeydown(event);
-    },
+    // async handleKeydown(event: KeyboardEvent): Promise<void> {
+    //   pianoKeyboardFallbackHandleKeydown(event);
+    // },
     rememberSettings(): void {
       save(
         "highlightMode",

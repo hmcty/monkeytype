@@ -26,7 +26,6 @@ import * as LiveAcc from "./live-acc";
 import * as LiveBurst from "./live-burst";
 import * as TimerProgress from "./timer-progress";
 import * as MidiHandler from "./piano/midi-handler";
-import { initializeKeyboardFallback } from "./piano/keyboard-fallback";
 
 import * as TestTimer from "./test-timer";
 import * as OutOfFocus from "./out-of-focus";
@@ -474,10 +473,8 @@ async function init(): Promise<boolean> {
 
   if (getActiveFunboxNames().includes("piano_sightreading")) {
     if (!MidiHandler.isMidiActive()) {
-      MidiHandler.initializeMidi();
+      void MidiHandler.initializeMidi();
     }
-
-    initializeKeyboardFallback();
   }
 
   // polyglot mode, check to enable lazy mode if any support it
@@ -1647,6 +1644,21 @@ ConfigEvent.subscribe((eventKey, eventValue, nosave) => {
     if (eventValue === false) {
       rememberLazyMode = false;
     }
+  }
+  if (
+    eventKey === "pianoMidiDevice" &&
+    getActiveFunboxNames().includes("piano_sightreading")
+  ) {
+    void (async (): Promise<void> => {
+      const { switchMidiDevice } = await import("./piano/midi-handler");
+      if (
+        typeof eventValue === "string" &&
+        eventValue !== "" &&
+        eventValue !== "default"
+      ) {
+        switchMidiDevice(eventValue);
+      }
+    })();
   }
 });
 

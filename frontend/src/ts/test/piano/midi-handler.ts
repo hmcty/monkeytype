@@ -7,55 +7,52 @@ let activeInput: MIDIInput | null = null;
 let messageHandler: ((event: MIDIMessageEvent) => void) | null = null;
 
 /**
- * Check if Web MIDI API is supported in the current browser
- */
-export function checkMidiSupport(): { supported: boolean; message: string } {
-  if (!navigator.requestMIDIAccess) {
-    return {
-      supported: false,
-      message:
-        "Web MIDI API not supported. Please use Chrome/Edge or enable MIDI in Firefox (dom.webaudio.midi.enabled).",
-    };
-  }
-  return { supported: true, message: "" };
-}
-
-/**
  * Initialize Web MIDI API and request access to MIDI devices
  * @returns Promise<boolean> - true if successful, false otherwise
  */
 export async function initializeMidi(): Promise<boolean> {
-  const support = checkMidiSupport();
-  if (!support.supported) {
-    console.warn("[Piano]", support.message);
-    return false;
-  }
-
   try {
+    // Safari 18.3+ supports Web MIDI API - runtime support check happens in checkMidiSupport()
+    // eslint-disable-next-line compat/compat
     midiAccess = await navigator.requestMIDIAccess();
 
     // If a specific device was configured, try to use it
-    // const configuredDeviceId = Config.pianoMidiDevice;
-    // if (configuredDeviceId) {
-    //   const device = getMidiInputById(configuredDeviceId);
-    //   if (device) {
-    //     attachMidiListeners(device);
-    //     return true;
-    //   }
-    // }
+    const configuredDeviceId = Config.pianoMidiDevice;
+    if (
+      typeof configuredDeviceId === "string" &&
+      configuredDeviceId !== "" &&
+      configuredDeviceId !== "default"
+    ) {
+      const device = getMidiInputById(configuredDeviceId);
+      if (device !== null) {
+        attachMidiListeners(device);
+        return true;
+      }
+      // If configured device not found, fall through to default behavior
+      console.warn(
+        `[Piano] Configured MIDI device "${configuredDeviceId}" not found, using default`,
+      );
+    }
 
     // Otherwise, use the first available input
     const inputs = Array.from(midiAccess.inputs.values());
     console.log("[Piano] Available MIDI inputs:", inputs);
     if (inputs.length > 0) {
-      attachMidiListeners(inputs[1]);
+      attachMidiListeners(inputs[0]);
       return true;
     } else {
       console.warn("[Piano] No MIDI input devices found");
       return false;
     }
   } catch (error) {
-    console.error("[Piano] Failed to initialize MIDI:", error);
+    if (error instanceof NotSupportedError) {
+      console.warn(
+        "Web MIDI API not supported. Please use Chrome/Edge or enable MIDI in Firefox (dom.webaudio.midi.enabled).",
+      );
+    } else {
+      console.error("[Piano] Failed to initialize MIDI:", error);
+    }
+
     return false;
   }
 }
@@ -96,7 +93,9 @@ export function attachMidiListeners(input: MIDIInput): void {
  * @param event - The MIDI message event
  */
 function handleMidiMessage(event: MIDIMessageEvent): void {
-  const [status, noteNumber, velocity] = event.data;
+  const status = event.data[0] as number;
+  const noteNumber = event.data[1] as number;
+  const velocity = event.data[2] as number;
 
   // NOTE_ON: status byte 0x90-0x9F (144-159)
   // Channel 1-16 corresponds to 0x90-0x9F
@@ -121,7 +120,7 @@ function handleMidiMessage(event: MIDIMessageEvent): void {
 
   // Inject the encoded note as text input
   const now = performance.now();
-  emulateInsertText({
+  void emulateInsertText({
     data: encodedNote,
     now,
   });
@@ -143,7 +142,7 @@ export function getMidiDeviceInfo(): Array<{ id: string; name: string }> {
   const inputs = getMidiInputs();
   return inputs.map((input) => ({
     id: input.id,
-    name: input.name || "Unknown Device",
+    name: input.name ?? "Unknown Device",
   }));
 }
 
@@ -154,7 +153,7 @@ export function getMidiDeviceInfo(): Array<{ id: string; name: string }> {
  */
 export function switchMidiDevice(deviceId: string): boolean {
   const device = getMidiInputById(deviceId);
-  if (device) {
+  if (device !== null) {
     attachMidiListeners(device);
     return true;
   }
@@ -174,7 +173,7 @@ export function cleanupMidi(): void {
   if (midiAccess) {
     // Close all inputs
     for (const input of midiAccess.inputs.values()) {
-      input.close();
+      void input.close();
     }
     midiAccess = null;
   }

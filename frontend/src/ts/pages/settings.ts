@@ -713,8 +713,39 @@ async function fillSettingsPage(): Promise<void> {
   await initGroups();
   await ThemePicker.fillCustomButtons();
 
+  // Initialize MIDI device dropdown
+  await initMidiDeviceDropdown();
+
   setEventDisabled(false);
   settingsInitialized = true;
+}
+
+async function initMidiDeviceDropdown(): Promise<void> {
+  const { initializeMidi, getMidiDeviceInfo } =
+    await import("../test/piano/midi-handler");
+
+  // Initialize MIDI to get device list
+  await initializeMidi();
+  const devices = getMidiDeviceInfo();
+
+  const deviceOptions = [
+    { text: "Default (First Available)", value: "default" },
+    ...devices.map((device) => ({
+      text: device.name,
+      value: device.id,
+    })),
+  ];
+
+  new SlimSelect({
+    select: ".pageSettings .section[data-config-name='pianoMidiDevice'] select",
+    data: deviceOptions,
+    events: {
+      afterChange: (newVal): void => {
+        const deviceId = newVal[0]?.value as string;
+        UpdateConfig.setPianoMidiDevice(deviceId);
+      },
+    },
+  });
 }
 
 // export let settingsFillPromise = fillSettingsPage();
