@@ -25,6 +25,7 @@ import * as LiveSpeed from "./live-speed";
 import * as LiveAcc from "./live-acc";
 import * as LiveBurst from "./live-burst";
 import * as TimerProgress from "./timer-progress";
+import * as MidiHandler from "./piano/midi-handler";
 
 import * as TestTimer from "./test-timer";
 import * as OutOfFocus from "./out-of-focus";
@@ -136,6 +137,7 @@ export function startTest(now: number): boolean {
     }
   } catch (e) {}
   //use a recursive self-adjusting timer to avoid time drift
+  console.debug("Starting test at", now);
   TestStats.setStart(now);
   void TestTimer.start();
   TestUI.afterTestStart();
@@ -468,6 +470,12 @@ async function init(): Promise<boolean> {
   }
 
   const allowLazyMode = !language.noLazyMode || Config.mode === "custom";
+
+  if (getActiveFunboxNames().includes("piano_sightreading")) {
+    if (!MidiHandler.isMidiActive()) {
+      void MidiHandler.initializeMidi();
+    }
+  }
 
   // polyglot mode, check to enable lazy mode if any support it
   if (getActiveFunboxNames().includes("polyglot")) {
@@ -1636,6 +1644,21 @@ ConfigEvent.subscribe((eventKey, eventValue, nosave) => {
     if (eventValue === false) {
       rememberLazyMode = false;
     }
+  }
+  if (
+    eventKey === "pianoMidiDevice" &&
+    getActiveFunboxNames().includes("piano_sightreading")
+  ) {
+    void (async (): Promise<void> => {
+      const { switchMidiDevice } = await import("./piano/midi-handler");
+      if (
+        typeof eventValue === "string" &&
+        eventValue !== "" &&
+        eventValue !== "default"
+      ) {
+        switchMidiDevice(eventValue);
+      }
+    })();
   }
 });
 

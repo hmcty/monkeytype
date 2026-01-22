@@ -313,6 +313,7 @@ export const FunboxNameSchema = z.enum([
   "asl",
   "rot13",
   "no_quit",
+  "piano_sightreading",
 ]);
 export type FunboxName = z.infer<typeof FunboxNameSchema>;
 
@@ -369,6 +370,19 @@ export const PlayTimeWarningSchema = z
     "How many seconds before the end of the test to play a warning sound.",
   );
 export type PlayTimeWarning = z.infer<typeof PlayTimeWarningSchema>;
+
+export const PianoClefSchema = z.enum(["treble", "bass", "alto"]);
+export type PianoClef = z.infer<typeof PianoClefSchema>;
+
+export const PianoDifficultySchema = z.enum([
+  "beginner",
+  "intermediate",
+  "advanced",
+]);
+export type PianoDifficulty = z.infer<typeof PianoDifficultySchema>;
+
+export const PianoMidiDeviceSchema = z.string().optional();
+export type PianoMidiDevice = z.infer<typeof PianoMidiDeviceSchema>;
 
 export const ConfigSchema = z
   .object({
@@ -481,6 +495,11 @@ export const ConfigSchema = z
 
     // ads
     ads: AdsSchema,
+
+    // piano
+    pianoClef: PianoClefSchema,
+    pianoDifficulty: PianoDifficultySchema,
+    pianoMidiDevice: PianoMidiDeviceSchema,
   } satisfies Record<string, ZodSchema>)
   .strict();
 
@@ -503,6 +522,7 @@ export const ConfigGroupNameSchema = z.enum([
   "hideElements",
   "hidden",
   "ads",
+  "piano",
 ]);
 
 export type ConfigGroupName = z.infer<typeof ConfigGroupNameSchema>;
@@ -617,6 +637,11 @@ export const ConfigGroupsLiteral = {
 
   //ads
   ads: "ads",
+
+  //piano
+  pianoClef: "piano",
+  pianoDifficulty: "piano",
+  pianoMidiDevice: "piano",
 } as const satisfies Record<ConfigKey, ConfigGroupName>;
 
 export type ConfigGroups = typeof ConfigGroupsLiteral;

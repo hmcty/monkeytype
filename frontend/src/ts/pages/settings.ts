@@ -476,6 +476,11 @@ async function initGroups(): Promise<void> {
     UpdateConfig.setCustomBackgroundSize,
     "button",
   );
+  groups["pianoMidiDevice"] = new SettingsGroup(
+    "pianoMidiDevice",
+    UpdateConfig.setPianoMidiDevice,
+    "select",
+  );
 }
 
 async function fillSettingsPage(): Promise<void> {
@@ -708,8 +713,62 @@ async function fillSettingsPage(): Promise<void> {
   await initGroups();
   await ThemePicker.fillCustomButtons();
 
+  // Initialize MIDI device dropdown
+  await initMidiDeviceDropdown();
+
   setEventDisabled(false);
   settingsInitialized = true;
+}
+
+async function initMidiDeviceDropdown(): Promise<void> {
+  try {
+    const { initializeMidi, getMidiDeviceInfo, checkMidiSupport } =
+      await import("../test/piano/midi-handler");
+
+    // Check if MIDI is supported before initializing
+    const support = checkMidiSupport();
+    if (!support.supported) {
+      // If MIDI not supported, just show default option
+      new SlimSelect({
+        select:
+          ".pageSettings .section[data-config-name='pianoMidiDevice'] select",
+        data: [{ text: "Default (MIDI not supported)", value: "default" }],
+      });
+      return;
+    }
+
+    // Initialize MIDI to get device list
+    await initializeMidi();
+    const devices = getMidiDeviceInfo();
+
+    const deviceOptions = [
+      { text: "Default (First Available)", value: "default" },
+      ...devices.map((device) => ({
+        text: device.name,
+        value: device.id,
+      })),
+    ];
+
+    new SlimSelect({
+      select:
+        ".pageSettings .section[data-config-name='pianoMidiDevice'] select",
+      data: deviceOptions,
+      events: {
+        afterChange: (newVal): void => {
+          const deviceId = newVal[0]?.value as string;
+          UpdateConfig.setPianoMidiDevice(deviceId);
+        },
+      },
+    });
+  } catch (err) {
+    console.error("[Settings] Failed to initialize MIDI device dropdown:", err);
+    // Fallback to default option if initialization fails
+    new SlimSelect({
+      select:
+        ".pageSettings .section[data-config-name='pianoMidiDevice'] select",
+      data: [{ text: "Default (First Available)", value: "default" }],
+    });
+  }
 }
 
 // export let settingsFillPromise = fillSettingsPage();
@@ -801,7 +860,7 @@ function refreshPresetsSettingsSection(): void {
           <i class="fas fa-trash fa-fw"></i>
         </button>
       </div>
-      
+
       `);
     });
     $(".pageSettings .section.presets").removeClass("hidden");

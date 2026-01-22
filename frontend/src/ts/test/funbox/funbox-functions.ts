@@ -23,6 +23,14 @@ import * as TestState from "../test-state";
 import { WordGenError } from "../../utils/word-gen-error";
 import { FunboxName, KeymapLayout, Layout } from "@monkeytype/schemas/configs";
 import { Language, LanguageObject } from "@monkeytype/schemas/languages";
+import { getRandomNote } from "../piano/note-generator";
+import { PianoUi } from "../piano/piano-ui";
+import {
+  areNotesEquivalent,
+  encodeNote,
+  decodeNote,
+} from "../piano/note-utils";
+import { cleanupMidi } from "../piano/midi-handler";
 
 export type FunboxFunctions = {
   getWord?: (wordset?: Wordset, wordIndex?: number) => string;
@@ -40,6 +48,7 @@ export type FunboxFunctions = {
   isCharCorrect?: (char: string, originalChar: string) => boolean;
   handleKeydown?: (event: KeyboardEvent) => Promise<void>;
   getResultContent?: () => string;
+  onShowWords?: () => void;
   start?: () => void;
   restart?: () => void;
   getWordHtml?: (char: string, letterTag?: boolean) => string;
@@ -758,6 +767,66 @@ const list: Partial<Record<FunboxName, FunboxFunctions>> = {
       );
 
       return new PolyglotWordset(wordsWithLanguage, languageProperties);
+    },
+  },
+  piano_sightreading: {
+    getWord(_wordset?: Wordset, _wordIndex?: number): string {
+      const note = getRandomNote();
+      const encodedNote = encodeNote(note);
+      return encodedNote;
+    },
+    onShowWords(): void {
+      PianoUi.GetInstance().Render();
+    },
+    getWordHtml(char: string, letterTag?: boolean): string {
+      // Decode the note for display (though it will be invisible)
+      const decodedNote = decodeNote(char);
+      if (letterTag) {
+        return `<letter>${decodedNote}</letter>`;
+      } else {
+        return decodedNote;
+      }
+    },
+    isCharCorrect(char: string, originalChar: string): boolean {
+      PianoUi.GetInstance().AdvanceNote();
+
+      // Direct comparison (same encoding)
+      if (char === originalChar) {
+        return true;
+      }
+
+      // Decode and check enharmonic equivalents (C# = Db, etc.)
+      try {
+        const decodedChar = decodeNote(char);
+        const decodedOriginal = decodeNote(originalChar);
+        return areNotesEquivalent(decodedChar, decodedOriginal);
+      } catch (error) {
+        return false;
+      }
+    },
+    async start(): Promise<void> {
+      PianoUi.GetInstance().Render();
+    },
+    async restart(): Promise<void> {
+      PianoUi.GetInstance().Reset();
+    },
+    // async handleKeydown(event: KeyboardEvent): Promise<void> {
+    //   pianoKeyboardFallbackHandleKeydown(event);
+    // },
+    rememberSettings(): void {
+      save(
+        "highlightMode",
+        Config.highlightMode,
+        UpdateConfig.setHighlightMode,
+      );
+    },
+    applyGlobalCSS(): void {
+      $("#globalFunBoxTheme").attr("href", `funbox/piano_sightreading.css`);
+    },
+    clearGlobal(): void {
+      $("#globalFunBoxTheme").attr("href", ``);
+      PianoUi.GetInstance().Cleanup();
+      cleanupMidi();
     },
   },
 };

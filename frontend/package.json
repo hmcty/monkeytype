@@ -115,6 +115,7 @@
     "slim-select": "2.9.2",
     "stemmer": "2.0.1",
     "throttle-debounce": "5.0.2",
+    "vexflow": "5.0.0",
     "zod": "3.23.8",
     "zod-urlsearchparams": "0.0.16"
   }
